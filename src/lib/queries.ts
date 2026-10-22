@@ -157,3 +157,27 @@ export async function getPartnerTrackRecord(partnerId: string, excludeId: number
     topIssue: topIssue ? { ruleId: topIssue[0], count: topIssue[1] } : undefined,
   };
 }
+
+// Ads this reviewer sent back that are waiting on the submitter, most recent first.
+export async function getSentBack(reviewerId: string) {
+  return getDb()
+    .select(submissionColumns)
+    .from(submissions)
+    .leftJoin(partners, eq(submissions.partnerId, partners.id))
+    .where(and(eq(submissions.status, "changes_requested"), eq(submissions.reviewerId, reviewerId)))
+    .orderBy(desc(submissions.updatedAt));
+}
+
+// This reviewer's approvals and rejections from the last couple of weeks, newest first.
+export async function getRecentlyDecided(reviewerId: string, days = 14) {
+  const since = new Date(Date.now() - days * 86_400_000);
+  const rows = await getDb()
+    .select(submissionColumns)
+    .from(submissions)
+    .leftJoin(partners, eq(submissions.partnerId, partners.id))
+    .where(and(inArray(submissions.status, ["approved", "rejected"]), eq(submissions.reviewerId, reviewerId)))
+    .orderBy(desc(submissions.decidedAt));
+  return rows.filter((row) => row.decidedAt && row.decidedAt >= since);
+}
+
+export type DecidedSummary = Awaited<ReturnType<typeof getSentBack>>[number];

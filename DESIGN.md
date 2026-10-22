@@ -59,7 +59,7 @@ Reviewers read dense copy for hours, and marketers dip in between other work. Ne
 |---|---|---|---|
 | **Marketer (Maya)** | Her own ads and the rules | Write, check, submit and revise ads | See other people's work or the review queue; she only needs her own ads |
 | **Partner (Jordan)** | Only their company's ads and the rules | Submit and revise placements | See ClearPath's internal ads, other partners' work or any review data; they're an outside company |
-| **Reviewer (Dev)** | The queue and every ad | Approve, request changes, reject, and add rules | |
+| **Reviewer (Dev)** | The queue, every ad, and their own recent work (ads they sent back and their decisions from the last two weeks) | Approve, request changes, reject, and add rules | |
 | **Manager (Priya)** | Everything (read-only), plus team metrics and the audit log | Add and turn off rules, and send stale ads back for an update | Approve or reject |
 
 **Two compliance roles, on purpose.** Compliance teams aren't one job. Reviewers work ad by ad; managers own the team, the queue and exam readiness, and often don't read every ad in depth given their scope. Splitting the roles shows that range: the reviewer gets a focused, line-by-line workspace, and the manager gets the big picture (what's waiting, where issues come from, what went stale) with the ability to step in where it matters. Keeping approval with reviewers also separates oversight from decisions, which is what an examiner would expect to see.

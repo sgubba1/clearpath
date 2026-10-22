@@ -2,18 +2,21 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { RiskBadge, RiskReasons, StatusBadge, Tag } from "@/components/badges";
 import { EmptyState, PageHeader } from "@/components/page-header";
-import { daysUntil, formatDate, hoursSince, launchLabel, waitingFor } from "@/lib/format";
+import { daysUntil, formatDate, hoursSince, launchLabel, timeAgo, waitingFor } from "@/lib/format";
 import { CHANNEL_LABELS, PRODUCT_LABELS, submissionRef } from "@/lib/labels";
-import { getQueue } from "@/lib/queries";
+import { getQueue, getRecentlyDecided, getSentBack, type DecidedSummary } from "@/lib/queries";
 import { REVIEW_TARGET_HOURS } from "@/lib/risk";
 import { requireRole } from "@/lib/session";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Review queue" };
 
 export default async function QueuePage({ searchParams }: PageProps<"/queue">) {
-  await requireRole(["reviewer"]);
-  const queue = await getQueue();
+  const identity = await requireRole(["reviewer"]);
   const query = await searchParams;
+  const tab = query.tab === "sent-back" || query.tab === "decided" ? query.tab : "waiting";
+  // Counts for every tab are cheap at this volume and keep the tab labels honest.
+  const [queue, sentBack, decided] = await Promise.all([getQueue(), getSentBack(identity.id), getRecentlyDecided(identity.id)]);
   const overdue = queue.filter((item) => item.submittedAt && hoursSince(item.submittedAt) > REVIEW_TARGET_HOURS).length;
 
   return (
@@ -26,13 +29,51 @@ export default async function QueuePage({ searchParams }: PageProps<"/queue">) {
       <PageHeader
         title="Review queue"
         description={
-          queue.length
-            ? `${queue.length} ad${queue.length === 1 ? "" : "s"} waiting, riskiest first${overdue ? ` · ${overdue} past the ${REVIEW_TARGET_HOURS}-hour target` : ""}. Hover a risk label for the full score.`
-            : "Ads waiting for review, riskiest first."
+          tab === "sent-back"
+            ? "Ads you sent back, waiting on the submitter. They return to the queue when resubmitted."
+            : tab === "decided"
+              ? "Your approvals and rejections from the last 14 days, newest first."
+              : queue.length
+                ? `${queue.length} ad${queue.length === 1 ? "" : "s"} waiting, riskiest first${overdue ? ` · ${overdue} past the ${REVIEW_TARGET_HOURS}-hour target` : ""}. Hover a risk label for the full score.`
+                : "Ads waiting for review, riskiest first."
         }
       />
 
-      {queue.length === 0 ? (
+      <nav aria-label="Review queue sections" className="flex gap-1 border-b">
+        {(
+          [
+            ["waiting", "Waiting", queue.length],
+            ["sent-back", "Sent back", sentBack.length],
+            ["decided", "Recently decided", decided.length],
+          ] as const
+        ).map(([id, label, count]) => (
+          <Link
+            key={id}
+            href={id === "waiting" ? "/queue" : `/queue?tab=${id}`}
+            aria-current={tab === id ? "page" : undefined}
+            className={cn(
+              "-mb-px border-b-2 px-3 py-2 text-sm font-medium",
+              tab === id ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {label} <span className="font-normal text-muted-foreground">({count})</span>
+          </Link>
+        ))}
+      </nav>
+
+      {tab === "sent-back" ? (
+        <HistoryList
+          items={sentBack}
+          empty="Nothing sent back. Ads you request changes on show up here until they're resubmitted."
+          status={(item) => `With ${item.partnerName ?? item.submitterName} · sent back ${timeAgo(item.updatedAt)}`}
+        />
+      ) : tab === "decided" ? (
+        <HistoryList
+          items={decided}
+          empty="No decisions in the last 14 days."
+          status={(item) => `${item.status === "approved" ? "Approved" : "Rejected"} · ${item.decidedAt ? timeAgo(item.decidedAt) : ""}`}
+        />
+      ) : queue.length === 0 ? (
         <EmptyState title="Nothing waiting for review" description="New submissions appear here as soon as they're sent." />
       ) : (
         <ol className="divide-y rounded-xl border bg-card">
@@ -83,5 +124,31 @@ export default async function QueuePage({ searchParams }: PageProps<"/queue">) {
         </ol>
       )}
     </main>
+  );
+}
+
+// The calmer list for ads already decided: name, one line of details, and where it stands.
+function HistoryList({ items, empty, status }: { items: DecidedSummary[]; empty: string; status: (item: DecidedSummary) => string }) {
+  if (items.length === 0) return <EmptyState title="Nothing here yet" description={empty} />;
+  return (
+    <ol className="divide-y rounded-xl border bg-card">
+      {items.map((item) => (
+        <li key={item.id}>
+          <Link
+            href={`/queue/${item.id}`}
+            className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-4 hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:outline-none sm:px-5"
+          >
+            <div className="min-w-0">
+              <p className="truncate font-medium">{item.campaign}</p>
+              <p className="text-sm text-muted-foreground">
+                {submissionRef(item.id)} · {item.submitterType === "affiliate" ? PRODUCT_LABELS[item.product] : `${CHANNEL_LABELS[item.channel]} · ${PRODUCT_LABELS[item.product]}`} ·{" "}
+                {item.partnerName ?? item.submitterName}
+              </p>
+            </div>
+            <p className="text-sm text-muted-foreground">{status(item)}</p>
+          </Link>
+        </li>
+      ))}
+    </ol>
   );
 }
