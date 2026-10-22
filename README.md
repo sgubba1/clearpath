@@ -6,6 +6,8 @@
 
 A prototype for the compliance marketing team at ClearPath Financial, a hypothetical consumer lender (personal loans, credit cards, mortgage prequalification) whose ad review runs on Excel and email today.
 
+The reasoning behind the main decisions (personas, research, pain points, interface, roles and flags) is in [DESIGN.md](DESIGN.md).
+
 ## The problem
 
 Reviewer time is the bottleneck, and most of it goes to repeat work: catching the same mistakes, chasing versions, and re-reading a whole ad after a one-line fix.
