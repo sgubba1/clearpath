@@ -33,7 +33,7 @@ export const TOUR: TourStep[] = [
     identity: "priya",
     href: "/dashboard",
     title: "Priya sees the whole team",
-    body: "Turnaround, first-time approvals and the most common issues, plus an approved ad that went stale when rates changed. The Audit log tab has every step you just took.",
+    body: "Turnaround, first-time approvals and the most common issues, plus an approved ad that went stale when rates changed: send it back to Maya for an update. The Audit log tab has every step you just took.",
   },
 ];
 

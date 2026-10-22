@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RiskBadge, StatusBadge, Tag } from "@/components/badges";
+import { requestRateUpdate } from "@/app/queue/actions";
 import { ClaimOnOpen } from "@/components/claim-on-open";
+import { Button } from "@/components/ui/button";
 import { ReviewWorkspace } from "@/components/review-workspace";
 import { RoundChanges } from "@/components/round-changes";
 import { describeEvent } from "@/lib/activity";
@@ -122,6 +124,13 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/q
               </li>
             ))}
           </ul>
+          {identity.role === "manager" && item.status === "approved" && sinceSubmission.some((finding) => finding.ruleId === "rate-not-offered") && (
+            <form action={requestRateUpdate.bind(null, item.id)} className="mt-3">
+              <Button type="submit" size="sm">
+                Send back to {item.submitterName.split(" ")[0]} for an update
+              </Button>
+            </form>
+          )}
         </section>
       )}
 

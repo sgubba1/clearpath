@@ -8,6 +8,8 @@ import { submissionRef } from "@/lib/labels";
 import { getAuditLog, getTeamMetrics, type TeamMetrics } from "@/lib/metrics";
 import { REVIEW_TARGET_HOURS } from "@/lib/risk";
 import { getRule } from "@/lib/rules/catalog";
+import { requestRateUpdate } from "@/app/queue/actions";
+import { Button } from "@/components/ui/button";
 import { requireRole } from "@/lib/session";
 import { getTeamRules } from "@/lib/team-rules";
 import { cn } from "@/lib/utils";
@@ -22,10 +24,17 @@ const TABS = [
 export default async function DashboardPage({ searchParams }: PageProps<"/dashboard">) {
   await requireRole(["manager"]);
   await getTeamRules();
-  const tab = (await searchParams).tab === "audit" ? "audit" : "overview";
+  const query = await searchParams;
+  const tab = query.tab === "audit" ? "audit" : "overview";
+  const [sentRef, sentTo] = typeof query.sentBack === "string" ? query.sentBack.split("|") : [];
 
   return (
     <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 sm:px-6">
+      {sentRef && (
+        <p role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          {sentRef} sent back to {sentTo} for an update. It returns to the review queue when they resubmit.
+        </p>
+      )}
       <PageHeader title="Team overview" description="How fast ads move through review, and where the issues come from." />
 
       <nav aria-label="Team overview sections" className="flex gap-1 border-b">
@@ -91,7 +100,10 @@ function Overview({ metrics }: { metrics: TeamMetrics }) {
           <h2 id="rates-title" className="font-semibold text-amber-950">
             Approved ads that no longer match the rate sheet
           </h2>
-          <p className="mt-1 text-sm text-amber-900">These were fine when approved. Rates changed since, so they need an update before running again.</p>
+          <p className="mt-1 text-sm text-amber-900">
+            These were fine when approved. Rates changed since, so they need an update before running again. Sending one back reopens it
+            with a note to the submitter.
+          </p>
           <ul className="mt-3 space-y-2">
             {metrics.affectedByRates.map((item) => (
               <li key={item.id} className="rounded-lg bg-background p-3 text-sm">
@@ -102,9 +114,16 @@ function Overview({ metrics }: { metrics: TeamMetrics }) {
                   {" "}
                   · {submissionRef(item.id)} · {item.submitterName} · approved {item.decidedAt ? timeAgo(item.decidedAt) : ""}
                 </span>
-                <p className="mt-1">
-                  &ldquo;{item.matchText}&rdquo;: {item.detail}
-                </p>
+                <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+                  <p>
+                    &ldquo;{item.matchText}&rdquo;: {item.detail}
+                  </p>
+                  <form action={requestRateUpdate.bind(null, item.id)}>
+                    <Button type="submit" size="sm" variant="outline">
+                      Send back to {item.submitterName.split(" ")[0]} for an update
+                    </Button>
+                  </form>
+                </div>
               </li>
             ))}
           </ul>

@@ -18,7 +18,7 @@ Open the demo and click **Start the tour**. A bar under the header tells you wha
 2. **Dev, a reviewer, opens the riskiest ad first.** The queue is sorted by risk. Open the partner ad at the top, comment on a flag and request changes.
 3. **Jordan, an affiliate partner, revises what was sent back.** The feedback sits next to the fields it's about.
 4. **Round 2 takes seconds.** Dev sees only what changed, and that the flag is fixed.
-5. **Priya, the manager, sees the team:** turnaround, first-time approvals, the most common issues, an approved ad that went stale when rates changed, and an audit log of everything you just did.
+5. **Priya, the manager, sees the team:** turnaround, first-time approvals, the most common issues, and an approved ad that went stale when rates changed, which she can send back to Maya for an update. The audit log shows everything you just did.
 
 There's no login. Switch people any time from the menu at the top right, which also has **Reset demo data**. Everyone shares one demo database, so you may see what earlier visitors did.
 
@@ -59,7 +59,7 @@ The product is one connected loop. Each step uses what the previous one produced
 **4. Team view and audit trail (Priya).** Every number is computed from the same records:
 - average turnaround, the share approved on the first round, and rounds per approval, each compared with the previous two weeks;
 - the most common issues, linked to the rule library, and which marketers and partners they come from;
-- approved ads that no longer match today's rate sheet;
+- approved ads that no longer match today's rate sheet, each with a **Send back for an update** button that reopens the ad with a note to the submitter, so it goes through a normal revision round;
 - an audit log of every submission, check, acknowledgment, comment and decision, written as sentences.
 
 ![Manager view: metrics strip, stale-rate alert, top issues and sources](.github/screenshots/manager.png)
@@ -85,6 +85,8 @@ It also catches copy that *became* wrong when the rate sheet changed. The rule l
 - **It's optional.** Without a key, it says it's off and everything else works.
 
 **Four connected features, finished, instead of many shallow ones.** Pre-check, review, resubmission and the manager view each use the previous step's data. Email, SMS, social and affiliate placements have their own fields and checks; landing pages and paid search are a generic paste.
+
+**Managers oversee; reviewers decide.** Priya sees everything, owns the rule library and can send a stale approved ad back for an update, but approving and rejecting stay with reviewers, a separation an examiner would expect.
 
 **A role switcher instead of login.** It lets an evaluator see every perspective in minutes. Affiliates still only ever see their own partner's ads, and managers get read-only access to any ad. Real authentication (SSO for staff, invitations for partners) is next on the list.
 

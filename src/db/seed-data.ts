@@ -391,7 +391,7 @@ export const SUBMISSIONS: SeedSubmission[] = [
     channel: "email",
     campaign: "Evergreen consolidation email",
     launchInDays: -17,
-    submitter: "sam",
+    submitter: "maya",
     status: "approved",
     approvedUnderOldRates: true,
     reviewer: "hannah",

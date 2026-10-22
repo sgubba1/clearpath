@@ -7,7 +7,9 @@ import { auditEvents, comments, flags, submissions } from "@/db/schema";
 import type { Identity } from "@/lib/identities";
 import { submissionRef } from "@/lib/labels";
 import { getNextInQueue, getReviewItem } from "@/lib/queries";
+import { getRateSheet } from "@/lib/rate-sheet";
 import { getRule } from "@/lib/rules/catalog";
+import { precheck } from "@/lib/rules/engine";
 import { getIdentity } from "@/lib/session";
 import { getTeamRules } from "@/lib/team-rules";
 
@@ -132,4 +134,32 @@ export async function decide(_prev: DecisionState, formData: FormData): Promise<
   const next = await getNextInQueue(id);
   const done = new URLSearchParams({ done: submissionRef(id), result: outcome.label });
   redirect(next ? `/queue/${next.id}?${done}` : `/queue?${done}`);
+}
+
+// A manager sends an approved ad back when it no longer matches the rate sheet. It reopens as
+// "changes requested" with a note, so the submitter revises it like any other round.
+export async function requestRateUpdate(id: number) {
+  const identity = await getIdentity();
+  if (identity?.role !== "manager") throw new Error("Only managers can send approved ads back.");
+
+  const item = await getReviewItem(id);
+  if (!item || item.status !== "approved") redirect("/dashboard");
+  const version = item.versions[item.versions.length - 1];
+  const rateSheet = await getRateSheet();
+  const rates = rateSheet[item.product];
+  const flaggedAtSubmission = new Set(version.flags.map((flag) => `${flag.ruleId}|${flag.matchText}`));
+  const stale = precheck({ product: item.product, channel: item.channel, fields: version.fields }, rateSheet).filter(
+    (finding) => finding.ruleId === "rate-not-offered" && !flaggedAtSubmission.has(`${finding.ruleId}|${finding.matchText}`),
+  );
+  const quoted = stale.map((finding) => `“${finding.matchText}”`).join(", ") || "the rates in this ad";
+  const note = `Rates changed since this was approved, so ${quoted} no longer matches the rate sheet (currently ${rates.aprMin.toFixed(2)}%–${rates.aprMax.toFixed(2)}% APR). Please update it and resubmit before it runs again.`;
+  const now = new Date();
+
+  await getDb().transaction(async (tx) => {
+    await tx.insert(comments).values({ versionId: version.id, flagId: null, authorId: identity.id, authorName: identity.name, body: note, createdAt: now });
+    await tx.update(submissions).set({ status: "changes_requested", reviewerId: identity.id, reviewerName: identity.name, decidedAt: null, updatedAt: now }).where(eq(submissions.id, id));
+    await tx.insert(auditEvents).values(auditRow(identity, id, version.number, "update_requested", `Rates changed: ${quoted}`));
+  });
+
+  redirect(`/dashboard?sentBack=${encodeURIComponent(`${submissionRef(id)}|${item.submitterName}`)}`);
 }
