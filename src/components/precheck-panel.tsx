@@ -28,9 +28,11 @@ type Props = {
   onSelect: (finding: Finding, key: string) => void;
   onApply: (finding: Finding) => void;
   onUndo: () => void;
+  // The optional AI second opinion, shown after the rule flags.
+  ai?: React.ReactNode;
 };
 
-export function PrecheckPanel({ findings, hasCopy, fieldLabel, fieldValue, activeKey, recentlyFixed, onSelect, onApply, onUndo }: Props) {
+export function PrecheckPanel({ findings, hasCopy, fieldLabel, fieldValue, activeKey, recentlyFixed, onSelect, onApply, onUndo, ai }: Props) {
   const high = findings.filter((finding) => finding.severity === "high").length;
 
   return (
@@ -63,7 +65,7 @@ export function PrecheckPanel({ findings, hasCopy, fieldLabel, fieldValue, activ
         ) : findings.length === 0 ? (
           <p className="flex items-center gap-2 rounded-lg bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900">
             <CheckCircle2Icon aria-hidden className="size-4 shrink-0" />
-            No issues found. Ready to submit.
+            The rule check found no issues.
           </p>
         ) : (
           <div className="space-y-3">
@@ -90,6 +92,8 @@ export function PrecheckPanel({ findings, hasCopy, fieldLabel, fieldValue, activ
           </div>
         )}
       </div>
+
+      {hasCopy && ai}
 
       <p className="text-xs text-muted-foreground">Automated checks catch common problems. A reviewer still makes the final call.</p>
     </section>

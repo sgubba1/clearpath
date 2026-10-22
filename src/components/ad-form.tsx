@@ -4,6 +4,7 @@ import { CheckCircle2Icon } from "lucide-react";
 import Link from "next/link";
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { saveAd, type AdFormState, type AdFormValues } from "@/app/ads/actions";
+import { AiSecondOpinion } from "@/components/ai-second-opinion";
 import { HighlightTextarea, type Mark } from "@/components/highlight-textarea";
 import { findingKey, PrecheckPanel } from "@/components/precheck-panel";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ type Props = {
   submitterLabel: string;
   minLaunchDate: string;
   rateSheet: RateSheet;
+  aiEnabled: boolean;
   // Ready-made ads evaluators can load instead of writing copy (new ads only).
   examples?: ExampleAd[];
   // Set when revising an ad compliance sent back: the round being written and the feedback to address.
@@ -38,7 +40,7 @@ type Props = {
 
 export type RevisionFeedback = { id: number; author: string; body: string; about?: string; quote?: string };
 
-export function AdForm({ draftId, initial, channels, submitterLabel, minLaunchDate, rateSheet, examples = [], revision }: Props) {
+export function AdForm({ draftId, initial, channels, submitterLabel, minLaunchDate, rateSheet, aiEnabled, examples = [], revision }: Props) {
   const [state, formAction, pending] = useActionState<AdFormState, FormData>(saveAd, { errors: {} });
   // Controlled values survive validation errors and let the pre-check apply rewrites.
   const [values, setValues] = useState<AdFormValues>(initial);
@@ -292,6 +294,35 @@ export function AdForm({ draftId, initial, channels, submitterLabel, minLaunchDa
             onSelect={selectFinding}
             onApply={applyFinding}
             onUndo={undo}
+            ai={
+              <AiSecondOpinion
+                enabled={aiEnabled}
+                input={values.product && values.channel ? { product: values.product, channel: values.channel, fields: values.fields } : null}
+                fieldLabel={fieldLabel}
+                onSelect={(suggestion) => {
+                  const text = values.fields[suggestion.field] ?? "";
+                  const start = text.indexOf(suggestion.quote);
+                  const input = inputs.current.get(suggestion.field);
+                  if (start < 0 || !input) return;
+                  input.focus();
+                  input.setSelectionRange(start, start + suggestion.quote.length);
+                  input.scrollIntoView({ block: "center", behavior: "smooth" });
+                }}
+                onApply={(suggestion) => {
+                  const wording = suggestion.suggestion;
+                  if (!wording) return;
+                  setUndoStack((stack) => [...stack, values.fields]);
+                  setValues((current) => ({
+                    ...current,
+                    fields: {
+                      ...current.fields,
+                      [suggestion.field]: (current.fields[suggestion.field] ?? "").replace(suggestion.quote, () => wording),
+                    },
+                  }));
+                  setRecentlyFixed({ title: suggestion.issue });
+                }}
+              />
+            }
           />
         ) : (
           <section className="rounded-xl border border-dashed p-5 text-sm text-muted-foreground">

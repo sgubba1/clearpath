@@ -4,26 +4,29 @@ import { MessageSquarePlusIcon } from "lucide-react";
 import { useActionState, useState } from "react";
 import { decide, type DecisionState } from "@/app/queue/actions";
 import { AdPreview, type PreviewFlag } from "@/components/ad-preview";
+import { AiSecondOpinion } from "@/components/ai-second-opinion";
 import { SEVERITY_BADGE } from "@/components/precheck-panel";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import type { Channel, Flag } from "@/db/schema";
+import type { Channel, Flag, Product } from "@/db/schema";
 import { CHANNEL_FIELDS } from "@/lib/labels";
 import { getRule, REVIEWER_CHECKLIST } from "@/lib/rules/catalog";
 import { cn } from "@/lib/utils";
 
 type Props = {
   submissionId: number;
+  product: Product;
   channel: Channel;
   fields: Record<string, string>;
   flags: Flag[];
   submitterName: string;
   canDecide: boolean;
   rateTerms: string;
+  aiEnabled: boolean;
 };
 
-export function ReviewWorkspace({ submissionId, channel, fields, flags, submitterName, canDecide, rateTerms }: Props) {
+export function ReviewWorkspace({ submissionId, product, channel, fields, flags, submitterName, canDecide, rateTerms, aiEnabled }: Props) {
   const [state, formAction, pending] = useActionState<DecisionState, FormData>(decide, { errors: {} });
   const [activeFlagId, setActiveFlagId] = useState<number>();
   const [commenting, setCommenting] = useState<Set<number>>(new Set());
@@ -201,6 +204,9 @@ export function ReviewWorkspace({ submissionId, channel, fields, flags, submitte
           ) : (
             <p className="mt-1 text-sm text-muted-foreground">Check the judgment calls, then approve if it reads right.</p>
           )}
+          <div className="mt-4">
+            <AiSecondOpinion enabled={aiEnabled} input={{ product, channel, fields }} fieldLabel={fieldLabel} />
+          </div>
         </section>
 
         <div className="lg:hidden">{renderChecklist("inline")}</div>

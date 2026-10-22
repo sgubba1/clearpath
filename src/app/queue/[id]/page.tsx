@@ -6,6 +6,7 @@ import { ClaimOnOpen } from "@/components/claim-on-open";
 import { ReviewWorkspace } from "@/components/review-workspace";
 import { RoundChanges } from "@/components/round-changes";
 import { describeEvent } from "@/lib/activity";
+import { aiReviewEnabled } from "@/lib/ai-review";
 import { launchLabel, timeAgo, waitingFor } from "@/lib/format";
 import { CHANNEL_LABELS, PRODUCT_LABELS, submissionRef } from "@/lib/labels";
 import { getReviewItem } from "@/lib/queries";
@@ -96,12 +97,14 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/q
       <ReviewWorkspace
         key={version.id}
         submissionId={item.id}
+        product={item.product}
         channel={item.channel}
         fields={version.fields}
         flags={version.flags}
         submitterName={item.submitterName}
         canDecide={canDecide}
         rateTerms={rateTerms}
+        aiEnabled={aiReviewEnabled()}
       />
 
       <details className="rounded-xl border bg-card p-5">
