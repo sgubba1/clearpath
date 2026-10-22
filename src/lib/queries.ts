@@ -65,3 +65,17 @@ export async function getAllSubmissions() {
 }
 
 export type SubmissionSummary = Awaited<ReturnType<typeof getQueue>>[number];
+
+// One of the viewer's own ads with every version, or undefined if it isn't theirs.
+export async function getOwnedAd(identity: Identity, id: number) {
+  if (!Number.isInteger(id)) return undefined;
+  const owner =
+    identity.role === "affiliate" ? eq(submissions.partnerId, identity.id) : eq(submissions.submitterId, identity.id);
+  return getDb().query.submissions.findFirst({
+    where: and(eq(submissions.id, id), owner),
+    with: {
+      partner: true,
+      versions: { orderBy: (v, { asc }) => [asc(v.number)] },
+    },
+  });
+}
