@@ -41,7 +41,11 @@ export async function endTour(finished: boolean) {
 }
 
 // Evaluators share one database, so anyone can put the demo back to its starting state.
+// It also starts the visit over: no tour in progress and no person picked.
 export async function resetDemoData() {
   await seedDatabase(getDb());
+  const cookieStore = await cookies();
+  cookieStore.delete(TOUR_COOKIE);
+  cookieStore.delete(IDENTITY_COOKIE);
   redirect("/?reset=1");
 }
