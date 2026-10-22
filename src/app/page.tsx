@@ -1,5 +1,5 @@
-import { goToTourStep, switchIdentity } from "@/app/actions";
-import { Button } from "@/components/ui/button";
+import { startTour, switchIdentity } from "@/app/actions";
+import { StartTourButton } from "@/components/start-tour-button";
 import { findIdentity, IDENTITIES } from "@/lib/identities";
 import { getIdentity } from "@/lib/session";
 import { TOUR } from "@/lib/tour";
@@ -37,9 +37,10 @@ export default async function Home({ searchParams }: PageProps<"/">) {
               Take the 3-minute tour
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">Follow one ad from first draft to approval. A bar at the top tells you what to do at each step.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Starting the tour resets the demo data, so every step matches what you see.</p>
           </div>
-          <form action={goToTourStep.bind(null, 0)}>
-            <Button type="submit">Start the tour</Button>
+          <form action={startTour}>
+            <StartTourButton />
           </form>
         </div>
         <ol className="mt-5 grid gap-3 sm:grid-cols-5">

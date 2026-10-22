@@ -34,6 +34,13 @@ export async function goToTourStep(index: number) {
   redirect(step.href);
 }
 
+// Starting the tour resets the demo first, so every step matches what's on screen no matter
+// what earlier visitors did. Moving between steps (including Back) never resets.
+export async function startTour() {
+  await seedDatabase(getDb());
+  await goToTourStep(0);
+}
+
 export async function endTour(finished: boolean) {
   const cookieStore = await cookies();
   cookieStore.delete(TOUR_COOKIE);

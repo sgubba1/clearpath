@@ -51,7 +51,7 @@ Reviewers read dense copy for hours, and marketers dip in between other work. Ne
 - **Clean and calm by design.** Lots of whitespace and one accent color for the main action. Red, amber and green are reserved for meaning (severity and status) and always come with a text label, so color is never the only signal.
 - **One obvious next step.** Each screen has a single primary action, such as Submit for review, Revise and resubmit, or Approve; everything else is quieter.
 - **Say each thing once.** When the queue started to feel dense, repeated labels came out: the partner tag, launch date and risk reasons had been saying the same thing three ways.
-- **A tour that shows each point of view.** Because the product serves four roles, the guided tour walks one ad through all of them: Maya writes it, Dev reviews it, a partner revises theirs, Dev approves round 2, and Priya sees the team. Anyone can understand the whole loop in a few minutes, from each person's side.
+- **A tour that shows each point of view.** Because the product serves four roles, the guided tour walks one ad through all of them: Maya writes it, Dev reviews it, a partner revises theirs, Dev approves round 2, and Priya sees the team. Anyone can understand the whole loop in a few minutes, from each person's side. Starting the tour resets the shared demo data, so the steps always match what's on screen no matter what earlier visitors changed.
 
 ## Roles and what each can do
 

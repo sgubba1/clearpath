@@ -2,7 +2,7 @@
 
 **Catches predictable compliance problems while an ad is being written, sends reviewers the riskiest work first, and turns resubmissions into a quick check of what changed.**
 
-**Live demo: https://clearpath-one-ebon.vercel.app**: click **Start the tour** (about 3 minutes, no login).
+**Live demo: https://clearpath-one-ebon.vercel.app**: click **Start the tour** (about 3 minutes, no login; it resets the shared demo data first so every step lines up).
 
 A prototype for the compliance marketing team at ClearPath Financial, a hypothetical consumer lender (personal loans, credit cards, mortgage prequalification) whose ad review runs on Excel and email today.
 
