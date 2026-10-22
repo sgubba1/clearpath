@@ -6,8 +6,6 @@
 
 A prototype for the compliance marketing team at ClearPath Financial, a hypothetical consumer lender (personal loans, credit cards, mortgage prequalification) whose ad review runs on Excel and email today.
 
-![Reviewer view: the ad with flagged text highlighted, flags and the decision alongside](.github/screenshots/review.png)
-
 ## The problem
 
 Reviewer time is the bottleneck, and most of it goes to repeat work: catching the same mistakes, chasing versions, and re-reading a whole ad after a one-line fix.
@@ -28,8 +26,6 @@ One loop, where each step uses what the last one produced:
 - **Compliance owns the rules.** Reviewers and managers can add rules in the app, e.g. flag "payday loan" or require "Equal Housing Lender" on mortgage ads, and test them before saving.
 - **Stale ads are caught.** When rates change, approved ads that no longer match are listed, and the manager can send them back for an update.
 - **An optional AI second opinion** catches paraphrases the rules miss (see below).
-
-![Pre-check: flagged phrases highlighted, issues with suggested fixes alongside](.github/screenshots/precheck.png)
 
 ## Key decisions
 
