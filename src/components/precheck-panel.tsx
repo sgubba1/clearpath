@@ -2,17 +2,11 @@
 
 import { CheckCircle2Icon, ChevronDownIcon, ExternalLinkIcon, Undo2Icon } from "lucide-react";
 import { useState } from "react";
+import { SEVERITY_BADGE } from "@/components/badges";
 import { Button } from "@/components/ui/button";
-import type { Severity } from "@/db/schema";
 import { getRule } from "@/lib/rules/catalog";
 import type { Finding } from "@/lib/rules/engine";
 import { cn } from "@/lib/utils";
-
-export const SEVERITY_BADGE: Record<Severity, string> = {
-  high: "bg-red-100 text-red-800",
-  medium: "bg-amber-100 text-amber-900",
-  low: "bg-sky-100 text-sky-900",
-};
 
 export function findingKey(finding: Finding, index: number) {
   return `${finding.ruleId}:${finding.field}:${finding.start}:${index}`;

@@ -1,4 +1,4 @@
-import type { Status } from "@/db/schema";
+import type { Severity, Status } from "@/db/schema";
 import { STATUS_LABELS } from "@/lib/labels";
 import { riskLevel } from "@/lib/risk";
 import { cn } from "@/lib/utils";
@@ -59,3 +59,10 @@ export function Tag({ children, tone = "neutral" }: { children: React.ReactNode;
     </span>
   );
 }
+
+// Severity colors for flags. Kept here, not in a client component, so server pages can use them too.
+export const SEVERITY_BADGE: Record<Severity, string> = {
+  high: "bg-red-100 text-red-800",
+  medium: "bg-amber-100 text-amber-900",
+  low: "bg-sky-100 text-sky-900",
+};

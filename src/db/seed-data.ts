@@ -22,6 +22,7 @@ export const PEOPLE = {
   dev: { id: "dev", name: "Dev Patel", role: "reviewer" },
   hannah: { id: "hannah", name: "Hannah Brooks", role: "reviewer" },
   marcus: { id: "marcus", name: "Marcus Lee", role: "reviewer" },
+  priya: { id: "priya", name: "Priya Shah", role: "manager" },
 } as const satisfies Record<string, Person>;
 
 export type PersonKey = keyof typeof PEOPLE;
@@ -502,3 +503,19 @@ export const SUBJECTS: Record<Product, string> = {
 };
 
 export { FOOTER };
+
+// A rule the compliance team added in the app (ClearPath doesn't offer payday loans).
+export const TEAM_RULE = {
+  title: "Calls it a payday loan or cash advance",
+  category: "brand",
+  severity: "high" as const,
+  kind: "phrases" as const,
+  phrases: ["payday loan", "payday loans", "cash advance", "paycheck advance"],
+  replacement: "personal loan",
+  products: ["personal_loan" as const],
+  channels: null,
+  whyItMatters:
+    "ClearPath doesn't offer payday loans or cash advances. Using those names misdescribes a fixed-rate installment loan and invites regulator attention reserved for short-term, high-cost lenders.",
+  fixHint: "Call it a personal loan, and describe the fixed rate and term instead.",
+  source: "ClearPath brand and product naming guidelines",
+};

@@ -64,7 +64,9 @@ The product is one connected loop. Each step uses what the previous one produced
 
 ![Manager view: metrics strip, stale-rate alert, top issues and sources](.github/screenshots/manager.png)
 
-**Also:** an **Ad rules** page that every role can read, and an optional **AI second opinion** (below).
+**5. A rule library compliance owns.** The **Ad rules** page groups every rule by category (rates and terms, approval and credit claims, promises, required disclosures, partner placements, brand language), each with why it exists, how to fix it and its source. Reviewers and managers can **add team rules** without a code change: flag words or phrases (e.g. "payday loan") with an optional replacement, or require text (e.g. "Equal Housing Lender" on mortgage ads), scoped to products and channels, with a test box to try the rule on sample copy before saving. Team rules run in every pre-check immediately, can be turned off, and are recorded in the audit log.
+
+**Also:** an optional **AI second opinion** (below).
 
 ## Key decisions and tradeoffs
 
@@ -119,12 +121,12 @@ In a real rollout I'd take a baseline for each from the team's existing Excel lo
 
 ## How I'd roll it out
 
-- **Seed the rule library from the team's own history.** The most common reasons in the Excel log of past review comments become the first rules. That way the pre-check catches what this team actually sends back, and compliance owns the rules from day one.
+- **Seed the rule library from the team's own history.** The most common reasons in the Excel log of past review comments become the first rules, added as team rules in the app. That way the pre-check catches what this team actually sends back, and compliance owns the rules from day one.
 - **Start with affiliates.** They're the least supervised, highest-risk channel, and where the lender carries the liability.
 
 ## What's next
 
-- **Rules:** a rule editor for compliance, so rules aren't code changes, and state-by-state rules beyond one example.
+- **Rules:** editing team rules in place (today they're added and turned off), pattern-based team rules beyond phrases and required text, and state-by-state rules.
 - **More channels:** influencer scripts (paid-relationship disclosure) and direct mail with a prescreen toggle (firm offer and opt-out notice).
 - **Live affiliate monitoring:** re-scan published partner pages after approval to catch copy that changed.
 - **Images and video:** check the text inside creative assets.
@@ -149,7 +151,7 @@ npm run dev               # http://localhost:3000
 | `npm run dev` | Start the app at localhost:3000 |
 | `npm run db:push` | Create or update the database schema |
 | `npm run db:seed` | Wipe the database and load the demo data, with times relative to now |
-| `npm run test:rules` | Run 39 test ads through the rule library and compare expected and actual flags (including ads that must stay clean, and checking that suggested fixes clear their flags) |
+| `npm run test:rules` | Run 45 test cases through the rule library and compare expected and actual flags (including ads that must stay clean, team rules, and checking that suggested fixes clear their flags) |
 | `npm run build` | Production build |
 
 | Variable | Required | Purpose |

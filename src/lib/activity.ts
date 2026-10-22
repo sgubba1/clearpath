@@ -26,6 +26,12 @@ export function describeEvent(event: Event): string {
       return `${who} approved${round}${event.detail ? ` (${event.detail.toLowerCase()})` : ""}`;
     case "rejected":
       return `${who} rejected${round}`;
+    case "rule_added":
+      return `${who} added the rule "${event.detail?.replace(/ \(team-\d+\)$/, "") ?? ""}"`;
+    case "rule_turned_off":
+      return `${who} turned off the rule "${event.detail ?? ""}"`;
+    case "rule_turned_on":
+      return `${who} turned the rule "${event.detail ?? ""}" back on`;
     default:
       return `${who}: ${event.action.replace(/_/g, " ")}`;
   }

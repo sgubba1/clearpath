@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import type { Db } from "@/db";
-import { auditEvents, comments, flags, partners, rateSheet, submissions, versions, type Channel, type Product } from "@/db/schema";
+import { auditEvents, comments, flags, partners, rateSheet, submissions, teamRules, versions, type Channel, type Product } from "@/db/schema";
 import { toRateSheet } from "@/lib/rate-sheet";
 import { precheck } from "@/lib/rules/engine";
 import { getRule, type RuleId } from "@/lib/rules/catalog";
@@ -16,6 +16,7 @@ import {
   SHORT_COPY,
   SUBJECTS,
   SUBMISSIONS,
+  TEAM_RULE,
   VIOLATION_PHRASES,
   type PersonKey,
   type SeedSubmission,
@@ -51,7 +52,7 @@ export async function seedDatabase(db: Db, now = new Date()) {
 
   await db.transaction(async (tx) => {
     await tx.execute(
-      sql`TRUNCATE audit_events, comments, flags, versions, submissions, partners, rate_sheet RESTART IDENTITY CASCADE`,
+      sql`TRUNCATE audit_events, comments, flags, versions, submissions, partners, rate_sheet, team_rules RESTART IDENTITY CASCADE`,
     );
     await tx.insert(partners).values(PARTNERS);
     await tx.insert(rateSheet).values(RATE_SHEET);
@@ -82,6 +83,23 @@ export async function seedDatabase(db: Db, now = new Date()) {
     if (commentRows.length) await tx.insert(comments).values(commentRows);
 
     await tx.insert(auditEvents).values(plans.flatMap((plan, i) => plan.events.map((event) => ({ ...event, submissionId: submissionIds[i].id }))));
+
+    // One rule the team added in the app, so the library shows built-in and team rules side by side.
+    const ruleAddedAt = ago(6 * 24);
+    const [rule] = await tx
+      .insert(teamRules)
+      .values({ ...TEAM_RULE, createdById: PEOPLE.priya.id, createdByName: PEOPLE.priya.name, createdAt: ruleAddedAt })
+      .returning({ id: teamRules.id });
+    await tx.insert(auditEvents).values({
+      submissionId: null,
+      versionNumber: null,
+      actorId: PEOPLE.priya.id,
+      actorName: PEOPLE.priya.name,
+      actorRole: "manager",
+      action: "rule_added",
+      detail: `${TEAM_RULE.title} (team-${rule.id})`,
+      createdAt: ruleAddedAt,
+    });
   });
 
   return { submissions: plans.length };

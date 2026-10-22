@@ -5,7 +5,7 @@ import { useActionState, useState } from "react";
 import { decide, type DecisionState } from "@/app/queue/actions";
 import { AdPreview, type PreviewFlag } from "@/components/ad-preview";
 import { AiSecondOpinion } from "@/components/ai-second-opinion";
-import { SEVERITY_BADGE } from "@/components/precheck-panel";
+import { SEVERITY_BADGE } from "@/components/badges";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
