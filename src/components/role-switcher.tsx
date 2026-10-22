@@ -2,11 +2,12 @@
 
 import { useTransition } from "react";
 import { ChevronDownIcon } from "lucide-react";
-import { switchIdentity } from "@/app/actions";
+import { resetDemoData, switchIdentity } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -25,7 +26,7 @@ export function RoleSwitcher({ current }: { current: Identity }) {
           <span className="flex flex-col items-start text-left leading-tight">
             <span className="text-sm font-medium">{current.name}</span>
             <span className="text-xs text-muted-foreground">
-              {isPending ? "Switching…" : current.roleLabel}
+              {isPending ? "One moment…" : current.roleLabel}
             </span>
           </span>
           <ChevronDownIcon aria-hidden />
@@ -53,6 +54,17 @@ export function RoleSwitcher({ current }: { current: Identity }) {
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onSelect={() => {
+            if (window.confirm("Reset the demo data? Every ad, comment and decision goes back to how it started, for everyone using this demo.")) {
+              startTransition(() => resetDemoData());
+            }
+          }}
+          className="text-muted-foreground"
+        >
+          Reset demo data
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

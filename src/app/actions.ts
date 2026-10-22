@@ -2,6 +2,8 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { getDb } from "@/db";
+import { seedDatabase } from "@/db/seed";
 import { findIdentity, IDENTITY_COOKIE } from "@/lib/identities";
 
 export async function switchIdentity(id: string) {
@@ -18,4 +20,10 @@ export async function switchIdentity(id: string) {
   });
 
   redirect(identity.home);
+}
+
+// Evaluators share one database, so anyone can put the demo back to its starting state.
+export async function resetDemoData() {
+  await seedDatabase(getDb());
+  redirect("/?reset=1");
 }

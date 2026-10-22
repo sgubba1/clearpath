@@ -3,11 +3,17 @@ import { IDENTITIES } from "@/lib/identities";
 import { getIdentity } from "@/lib/session";
 
 // Entry point for evaluators: pick who you are. No login, by design.
-export default async function Home() {
+export default async function Home({ searchParams }: PageProps<"/">) {
   const current = await getIdentity();
+  const { reset } = await searchParams;
 
   return (
     <main className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6 sm:py-16">
+      {reset && (
+        <p role="status" className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          Demo data reset. Everything is back to its starting state.
+        </p>
+      )}
       <h1 className="text-3xl font-semibold tracking-tight">Who are you today?</h1>
       <p className="mt-2 max-w-2xl text-muted-foreground">
         ClearPath Compliance Review checks marketing ads before they reach a reviewer, sorts the review queue by risk,
