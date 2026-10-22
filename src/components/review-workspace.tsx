@@ -37,6 +37,8 @@ export function ReviewWorkspace({ submissionId, channel, fields, flags, submitte
   // One reason usually covers every flag (it's asked once at submit), so show it once.
   const reasons = [...new Set(openFlags.map((flag) => flag.reason).filter(Boolean))];
   const sharedReason = reasons.length === 1 && openFlags.every((flag) => flag.reason === reasons[0]) ? reasons[0] : undefined;
+  const firstName = submitterName.split(" ")[0];
+  const pendingComments = Object.values(flagComments).filter((body) => body.trim()).length + (note.trim() ? 1 : 0);
   const fieldLabel = (key: string) => CHANNEL_FIELDS[channel].find((field) => field.key === key)?.label ?? key;
 
   const previewFlags: PreviewFlag[] = openFlags.map((flag) => ({
@@ -150,9 +152,23 @@ export function ReviewWorkspace({ submissionId, channel, fields, flags, submitte
                     {canDecide &&
                       (isCommenting ? (
                         <div className="mt-2 space-y-1">
-                          <Label htmlFor={`flagComment.${flag.id}`} className="text-xs">
-                            Comment for {submitterName.split(" ")[0]}
-                          </Label>
+                          <div className="flex items-baseline justify-between gap-2">
+                            <Label htmlFor={`flagComment.${flag.id}`} className="text-xs">
+                              Comment for {firstName}
+                            </Label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const next = new Set(commenting);
+                                next.delete(flag.id);
+                                setCommenting(next);
+                                setFlagComments({ ...flagComments, [flag.id]: "" });
+                              }}
+                              className="text-xs text-muted-foreground hover:text-foreground"
+                            >
+                              Remove
+                            </button>
+                          </div>
                           <Textarea
                             id={`flagComment.${flag.id}`}
                             name={`flagComment.${flag.id}`}
@@ -162,7 +178,11 @@ export function ReviewWorkspace({ submissionId, channel, fields, flags, submitte
                             onChange={(e) => setFlagComments({ ...flagComments, [flag.id]: e.target.value })}
                             placeholder={rule.fixHint}
                             className="bg-background"
+                            aria-describedby={`flagComment.${flag.id}-help`}
                           />
+                          <p id={`flagComment.${flag.id}-help`} className="text-xs text-muted-foreground">
+                            Sent to {firstName} with your decision below.
+                          </p>
                         </div>
                       ) : (
                         <button
@@ -187,16 +207,23 @@ export function ReviewWorkspace({ submissionId, channel, fields, flags, submitte
 
         {canDecide && (
           <section aria-labelledby="decision-title" className="space-y-4 rounded-xl border bg-card p-5">
-            <h2 id="decision-title" className="font-semibold">
-              Decision
-            </h2>
+            <div>
+              <h2 id="decision-title" className="font-semibold">
+                Decision
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {pendingComments > 0
+                  ? `Your ${pendingComments === 1 ? "comment goes" : `${pendingComments} comments go`} to ${firstName} with whichever decision you choose.`
+                  : `Comments on flags and the note below go to ${firstName} with your decision.`}
+              </p>
+            </div>
             {state.message && (
               <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
                 {state.message}
               </p>
             )}
             <div className="space-y-1.5">
-              <Label htmlFor="note">Note to {submitterName.split(" ")[0]}</Label>
+              <Label htmlFor="note">Note to {firstName}</Label>
               <Textarea
                 id="note"
                 name="note"
@@ -243,7 +270,7 @@ export function ReviewWorkspace({ submissionId, channel, fields, flags, submitte
                 Approve
               </Button>
               <Button type="submit" name="decision" value="changes" variant="outline" disabled={pending}>
-                Request changes
+                Request changes{pendingComments > 0 && ` · ${pendingComments} ${pendingComments === 1 ? "comment" : "comments"}`}
               </Button>
               <Button type="submit" name="decision" value="reject" variant="ghost" className="text-red-700 hover:bg-red-50 hover:text-red-800" disabled={pending}>
                 Reject
