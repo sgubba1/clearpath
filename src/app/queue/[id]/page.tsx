@@ -80,7 +80,7 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/q
         <div className="flex flex-wrap items-start justify-between gap-3">
           <h1 className="text-2xl font-semibold tracking-tight">{item.campaign}</h1>
           <div className="flex items-center gap-2">
-            {waitingForReview && <RiskBadge score={risk.score} />}
+            {waitingForReview && <RiskBadge score={risk.score} parts={risk.parts} />}
             <StatusBadge status={item.status} />
           </div>
         </div>

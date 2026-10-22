@@ -16,19 +16,33 @@ type RiskInput = {
   now?: Date;
 };
 
-export type RiskPart = { label: string; points: number };
+export type RiskPart = {
+  kind: "flags" | "partner" | "mortgage" | "launch-soon" | "live";
+  label: string;
+  points: number;
+  severity?: Severity;
+  count?: number;
+};
 
 // The score and the reasons behind it, so the queue order is never a black box.
 export function riskBreakdown(input: RiskInput): { score: number; parts: RiskPart[] } {
   const parts: RiskPart[] = [];
   for (const severity of ["high", "medium", "low"] as const) {
     const count = input.openFlagSeverities.filter((value) => value === severity).length;
-    if (count) parts.push({ label: `${count} ${severity}-severity flag${count === 1 ? "" : "s"}`, points: count * SEVERITY_POINTS[severity] });
+    if (count) {
+      parts.push({ kind: "flags", severity, count, label: `${count} ${severity}-severity flag${count === 1 ? "" : "s"}`, points: count * SEVERITY_POINTS[severity] });
+    }
   }
-  if (input.submitterType === "affiliate") parts.push({ label: "Partner submission", points: AFFILIATE_BUMP });
-  if (input.product === "mortgage_prequal") parts.push({ label: "Mortgage", points: MORTGAGE_BUMP });
+  if (input.submitterType === "affiliate") parts.push({ kind: "partner", label: "Partner submission", points: AFFILIATE_BUMP });
+  if (input.product === "mortgage_prequal") parts.push({ kind: "mortgage", label: "Mortgage", points: MORTGAGE_BUMP });
   const daysToLaunch = (Date.parse(`${input.launchDate}T00:00:00`) - (input.now ?? new Date()).getTime()) / 86_400_000;
-  if (daysToLaunch <= RUSH_DAYS) parts.push({ label: daysToLaunch < 0 ? "Already live" : "Launches within 3 days", points: RUSH_BUMP });
+  if (daysToLaunch <= RUSH_DAYS) {
+    parts.push(
+      daysToLaunch < 0
+        ? { kind: "live", label: "Already live", points: RUSH_BUMP }
+        : { kind: "launch-soon", label: "Launches within 3 days", points: RUSH_BUMP },
+    );
+  }
   return { score: parts.reduce((sum, part) => sum + part.points, 0), parts };
 }
 

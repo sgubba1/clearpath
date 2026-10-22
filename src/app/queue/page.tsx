@@ -27,7 +27,7 @@ export default async function QueuePage({ searchParams }: PageProps<"/queue">) {
         title="Review queue"
         description={
           queue.length
-            ? `${queue.length} ad${queue.length === 1 ? "" : "s"} waiting, riskiest first${overdue ? ` · ${overdue} past the ${REVIEW_TARGET_HOURS}-hour target` : ""}. Risk adds up open flags (high 3, medium 2) plus partner, mortgage and launch-date factors.`
+            ? `${queue.length} ad${queue.length === 1 ? "" : "s"} waiting, riskiest first${overdue ? ` · ${overdue} past the ${REVIEW_TARGET_HOURS}-hour target` : ""}. Hover a risk label for the full score.`
             : "Ads waiting for review, riskiest first."
         }
       />
@@ -47,22 +47,23 @@ export default async function QueuePage({ searchParams }: PageProps<"/queue">) {
                   className="grid gap-3 px-4 py-4 hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:outline-none sm:grid-cols-[7rem_1fr_auto] sm:items-center sm:px-5"
                 >
                   <div>
-                    <RiskBadge score={item.riskScore} />
+                    <RiskBadge score={item.riskScore} parts={item.riskParts} />
                   </div>
                   <div className="min-w-0 space-y-1">
                     <p className="truncate font-medium">{item.campaign}</p>
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
                       <span>{submissionRef(item.id)}</span>
                       <span aria-hidden>·</span>
+                      {/* Partners only submit affiliate placements, so the Affiliate tag stands in for the channel. */}
                       <span>
-                        {CHANNEL_LABELS[item.channel]} · {PRODUCT_LABELS[item.product]}
+                        {item.submitterType === "affiliate" ? PRODUCT_LABELS[item.product] : `${CHANNEL_LABELS[item.channel]} · ${PRODUCT_LABELS[item.product]}`}
                       </span>
                       <span aria-hidden>·</span>
                       <span>{item.partnerName ?? item.submitterName}</span>
                       {item.submitterType === "affiliate" && <Tag tone="partner">Affiliate</Tag>}
                       {item.currentVersion > 1 && <Tag>Round {item.currentVersion}</Tag>}
                     </div>
-                    <RiskReasons parts={item.riskParts} />
+                    <RiskReasons parts={item.riskParts} compact />
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-sm sm:justify-end">
                     <span className={isRush ? "font-medium text-foreground" : "text-muted-foreground"} title={formatDate(item.launchDate)}>

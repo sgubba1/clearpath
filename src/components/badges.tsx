@@ -1,6 +1,6 @@
 import type { Severity, Status } from "@/db/schema";
 import { STATUS_LABELS } from "@/lib/labels";
-import { riskLevel } from "@/lib/risk";
+import { riskLevel, type RiskPart } from "@/lib/risk";
 import { cn } from "@/lib/utils";
 
 // Color is never the only signal: every badge carries a text label.
@@ -33,11 +33,13 @@ const RISK_STYLES = {
   low: "bg-muted text-muted-foreground",
 } as const;
 
-export function RiskBadge({ score }: { score: number }) {
+export function RiskBadge({ score, parts }: { score: number; parts?: RiskPart[] }) {
   const level = riskLevel(score);
+  // Hover shows the arithmetic; the visible text stays short.
+  const detail = parts?.length ? `: ${parts.map((part) => `${part.label} +${part.points}`).join(", ")}` : "";
   return (
     <span
-      title={`Risk score ${score}`}
+      title={`Risk score ${score}${detail}`}
       className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold whitespace-nowrap", RISK_STYLES[level])}
     >
       {level === "high" ? "High risk" : level === "medium" ? "Medium risk" : "Low risk"}
@@ -67,11 +69,27 @@ export const SEVERITY_BADGE: Record<Severity, string> = {
   low: "bg-sky-100 text-sky-900",
 };
 
-// Plain-language reasons behind a risk score, e.g. "5 high-severity flags +15 · Partner submission +2".
-export function RiskReasons({ parts, className }: { parts: { label: string; points: number }[]; className?: string }) {
-  return (
-    <span className={cn("block text-xs text-muted-foreground", className)}>
-      {parts.length === 0 ? "No open flags or risk factors" : parts.map((part) => `${part.label} +${part.points}`).join(" · ")}
-    </span>
-  );
+// Plain-language reasons behind a risk score. "compact" is for scanning the queue: just the flags,
+// since partner status and launch timing are already visible on the row (hover the badge for the
+// arithmetic). The full form, with points, is for the review screen.
+export function RiskReasons({ parts, compact = false, className }: { parts: RiskPart[]; compact?: boolean; className?: string }) {
+  if (!compact) {
+    return (
+      <span className={cn("block text-xs text-muted-foreground", className)}>
+        {parts.length === 0 ? "No open flags or risk factors" : parts.map((part) => `${part.label} +${part.points}`).join(" · ")}
+      </span>
+    );
+  }
+  const flagCount = parts.reduce((sum, part) => sum + (part.kind === "flags" ? (part.count ?? 0) : 0), 0);
+  const highCount = parts.find((part) => part.kind === "flags" && part.severity === "high")?.count ?? 0;
+  const plural = (n: number) => (n === 1 ? "" : "s");
+  const summary =
+    flagCount === 0
+      ? "No open flags"
+      : highCount === flagCount
+        ? `${flagCount} high-severity flag${plural(flagCount)}`
+        : highCount
+          ? `${flagCount} flags, ${highCount} high-severity`
+          : `${flagCount} flag${plural(flagCount)}`;
+  return <span className={cn("block text-xs text-muted-foreground", className)}>{summary}</span>;
 }
