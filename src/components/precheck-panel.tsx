@@ -135,6 +135,14 @@ function FlagCard({
       )}
       {finding.detail && <p className="mt-1 text-muted-foreground">{finding.detail}</p>}
 
+      {finding.replacement === undefined && (
+        // No safe automatic rewrite for this one, so say how to fix it up front.
+        <p className="mt-3 rounded-md bg-muted/60 p-2.5">
+          <span className="text-xs font-medium text-muted-foreground">How to fix: </span>
+          {rule.fixHint}
+        </p>
+      )}
+
       {finding.replacement !== undefined && (
         <div className="mt-3 space-y-2 rounded-md bg-muted/60 p-2.5">
           <p className="text-xs font-medium text-muted-foreground">{missing ? "Suggested addition" : "Suggested change"}</p>
@@ -161,7 +169,7 @@ function FlagCard({
       {open && (
         <div className="mt-2 space-y-2 border-t pt-2 text-muted-foreground">
           <p className="text-foreground">{rule.whyItMatters}</p>
-          <p>{rule.fixHint}</p>
+          {finding.replacement !== undefined && <p>{rule.fixHint}</p>}
           <a
             href={rule.sourceUrl}
             target="_blank"

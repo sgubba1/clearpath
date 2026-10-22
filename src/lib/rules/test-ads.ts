@@ -13,6 +13,36 @@ const FOOTER =
 export const DEMO_AFFILIATE_COPY =
   "Guaranteed approval with no credit check! Borrow $5,000 for just $199/month. We are the lender that says yes. Best rates guaranteed, apply today.";
 
+
+// Different wordings of the same claims, so the rules are tested beyond the demo sentence.
+const affiliate = (name: string, copy: string, expected: RuleId[], fixesShouldClear = expected.length > 0): TestAd => ({
+  name,
+  product: "personal_loan",
+  channel: "affiliate",
+  fields: { placementUrl: "https://brightpath-rates.example.com/loans", copy },
+  expected,
+  fixesShouldClear,
+});
+
+const VARIANTS: TestAd[] = [
+  affiliate("Variant: approval guaranteed", "Approval guaranteed, even with bad credit!", ["guaranteed-approval"]),
+  affiliate("Variant: everyone gets approved", "Everyone gets approved. No credit check needed.", ["guaranteed-approval", "no-credit-check"]),
+  affiliate("Variant: 100% approval", "100% approval rate for all applicants.", ["guaranteed-approval"]),
+  affiliate("Variant: approved no matter what", "Get approved no matter what your credit looks like.", ["guaranteed-approval"]),
+  affiliate("Variant: basically approved", "Bad credit? No problem. You're basically approved already.", ["guaranteed-approval"]),
+  affiliate("Variant: never check credit", "We never check your credit.", ["no-credit-check"]),
+  affiliate("Variant: payment a month", "Only $250 a month for 48 months.", ["closed-end-trigger-terms"]),
+  affiliate("Variant: payment monthly", "Pay as little as $150 monthly.", ["closed-end-trigger-terms"]),
+  affiliate("Variant: rate starting at", "Rates starting at 5.99% APR.", ["rate-not-offered"]),
+  affiliate("Variant: lowest rates guaranteed", "Lowest rates in America, guaranteed.", ["affiliate-implies-lender"]),
+  affiliate("Variant: partner lends", "BrightPath lends up to $40,000 fast.", ["affiliate-implies-lender"]),
+  affiliate("Variant: never says no", "Apply with the lender that never says no.", ["guaranteed-approval"]),
+  affiliate("Variant: our rates (flag only, no rewrite)", "Our rates beat the banks.", ["affiliate-implies-lender"], false),
+  affiliate("Clean: decision wording", "Get a decision in minutes. Checking your rate won't affect your credit score.", []),
+  affiliate("Clean: ClearPath lends", "ClearPath Financial lends $2,000 to $40,000 at 8.99%–35.99% APR.", []),
+  affiliate("Clean: comparison wording", "Compare personal loan offers from ClearPath Financial and see if you prequalify.", []),
+];
+
 export const TEST_ADS: TestAd[] = [
   {
     name: "Demo affiliate ad",
@@ -161,4 +191,5 @@ export const TEST_ADS: TestAd[] = [
     fields: { subject: "Check your rate", body: "Checking your rate won't affect your credit score. 8.99%–35.99% APR.", footer: FOOTER },
     expected: [],
   },
+  ...VARIANTS,
 ];

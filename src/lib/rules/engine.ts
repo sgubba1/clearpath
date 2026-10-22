@@ -72,17 +72,50 @@ function phraseRule(pattern: RegExp, rewrite: (match: string, ctx: Ctx, text: st
     );
 }
 
-const APPROVAL_REWRITES: [RegExp, string][] = [
-  [/approves everyone/i, "reviews every application"],
-  [/.*/, "fast decisions"],
+// Phrase rules are lists of [pattern, rewrite]. Adding a new wording is one line here plus a
+// test ad in test-ads.ts. A null rewrite flags the phrase without suggesting a fix; a function
+// can pick wording from context.
+type Rewrite = string | null | ((context: { atSentenceStart: boolean }) => string);
+type PhraseList = [RegExp, Rewrite][];
+
+function phraseList(list: PhraseList, veto?: (found: string, text: string, index: number) => boolean): Detector {
+  const pattern = new RegExp(list.map(([re]) => `(?:${re.source})`).join("|"), "i");
+  return phraseRule(pattern, (found, _ctx, text, index) => {
+    if (veto?.(found, text, index)) return null;
+    const rewrite = list.find(([re]) => new RegExp(`^(?:${re.source})$`, "i").test(found))?.[1];
+    if (typeof rewrite === "function") return rewrite({ atSentenceStart: /(?:^|[.!?]\s+)$/.test(text.slice(0, index)) });
+    return rewrite ?? undefined;
+  });
+}
+
+const APPROVAL_PHRASES: PhraseList = [
+  [/\bapproves (?:everyone|anyone|all applicants)\b/, "reviews every application"],
+  [/\b(?:get )?approved no matter(?: what)?\b/, "get a decision no matter what"],
+  [/\byou(?:'|’)?re (?:basically |already |pretty much )?approved(?: already)?\b/, "you could qualify"],
+  [/\b(?:never|won(?:'|’)t) (?:says? no|turns? (?:anyone|you) down|decline you|deny you)\b/, "makes fast decisions"],
+  [/\beveryone (?:gets|is) approved\b|\beveryone(?:'|’)s approved\b/, "fast decisions for every application"],
+  [/100% approval(?: rate)?\b/, "fast decisions"],
+  [/\bguaranteed approval\b|\bapproval guaranteed\b|\bguaranteed to be approved\b|\binstant approval\b/, "fast decisions"],
 ];
 
-const LENDER_REWRITES: [RegExp, string | null][] = [
-  [/^we('|’)?re the lender|^we are the lender/i, "ClearPath Financial is the lender"],
-  [/^we('|’)ll lend/i, "ClearPath Financial can lend"],
-  [/^we lend/i, "ClearPath Financial lends"],
-  [/^is the lender/i, "partners with ClearPath Financial, a lender"],
-  [/rates? guaranteed|guaranteed (best|lowest)/i, "competitive rates"],
+const CREDIT_CHECK_PHRASES: PhraseList = [
+  [/\b(?:we )?(?:never|don(?:'|’)t|do not) check (?:your )?credit\b/, "we use a soft credit check to show your rate"],
+  [/\bwithout a credit check\b/, "with a soft credit check to see your rate"],
+  [
+    /\bno credit (?:checks?|pulls?|inquiry)(?: required| needed)?\b|\bno credit needed\b/,
+    ({ atSentenceStart }) => (atSentenceStart ? "checking your rate won't affect your credit score" : "a soft credit check to see your rate"),
+  ],
+];
+
+const LENDER_PHRASES: PhraseList = [
+  [/\bwe(?:'|’)?re (?:the|a|your) (?:direct )?lender\b|\bwe are (?:the|a|your) (?:direct )?lender\b/, "ClearPath Financial is the lender"],
+  [/\bwe(?:'|’)ll lend\b/, "ClearPath Financial can lend"],
+  [/\bwe lend\b/, "ClearPath Financial lends"],
+  [/\bis the lender\b/, "partners with ClearPath Financial, a lender"],
+  // A partner naming itself as the one lending, e.g. "BrightPath lends up to $40,000".
+  [/\b[A-Z][A-Za-z]+(?: [A-Z][A-Za-z]+)? lends\b/, "ClearPath Financial lends"],
+  [/\b(?:best|lowest) (?:rates?|APRs?)\b[^.!?\n]{0,30}?\bguaranteed\b|\bguaranteed (?:best|lowest) (?:rates?|APRs?)\b/, "competitive rates"],
+  [/\bour (?:loans?|rates?)\b/, null],
 ];
 
 // Matches "$199/month", "$199 per month", "$1,200 monthly".
@@ -96,14 +129,9 @@ const INTRO = /\b\d{1,2}(?:\.\d{1,2})?%\s?intro(?:ductory)?(?:\s(?:APR|rate))?/i
 const ONGOING_APR = /(?<!0)\b(?:[1-9]\d?(?:\.\d{1,2})?)%(?:\s?(?:-|–|to)\s?\d{1,2}(?:\.\d{1,2})?%)?\s?(?:variable\s|fixed\s)?APR/i;
 
 const DETECTORS: Record<RuleId, Detector> = {
-  "guaranteed-approval": phraseRule(
-    /\b(?:guaranteed approval|approval guaranteed|guaranteed to be approved|instant approval|100% approval|approves everyone|everyone is approved)\b/i,
-    (found) => APPROVAL_REWRITES.find(([re]) => re.test(found))![1],
-  ),
+  "guaranteed-approval": phraseList(APPROVAL_PHRASES),
 
-  "no-credit-check": phraseRule(/\b(?:no credit check(?:s)?(?: required| needed)?|without a credit check|no credit needed)\b/i, (found) =>
-    /^without/i.test(found) ? "with a soft credit check to see your rate" : "a soft credit check to see your rate",
-  ),
+  "no-credit-check": phraseList(CREDIT_CHECK_PHRASES),
 
   "closed-end-trigger-terms": (ctx) => {
     if (APR_MENTION.test(ctx.allText)) return [];
@@ -187,14 +215,11 @@ const DETECTORS: Record<RuleId, Detector> = {
     return [{ field: ctx.mainField, start: text.length, end: text.length, matchText: "", replacement: `${spacer(text)}ClearPath Financial, NMLS ID #${id}.` }];
   },
 
-  "affiliate-implies-lender": phraseRule(
-    /\b(?:we(?:'|’)?re the lender|we are the lender|we(?:'|’)ll lend|we lend|is the lender|best rates? guaranteed|lowest rates? guaranteed|guaranteed (?:best|lowest) rates?)\b/i,
-    (found, _ctx, text, index) => {
-      // "ClearPath Financial is the lender" is the compliant version, not a violation.
-      if (/^is the lender/i.test(found) && /clearpath(?: financial)?\s*$/i.test(text.slice(Math.max(0, index - 25), index))) return null;
-      return LENDER_REWRITES.find(([re]) => re.test(found))?.[1];
-    },
-  ),
+  "affiliate-implies-lender": phraseList(LENDER_PHRASES, (found, text, index) => {
+    // ClearPath naming itself as the lender is the compliant version, not a violation.
+    if (/^clearpath/i.test(found)) return true;
+    return /^is the lender/i.test(found) && /clearpath(?: financial)?\s*$/i.test(text.slice(Math.max(0, index - 25), index));
+  }),
 
   "sms-opt-out": (ctx) => {
     const text = ctx.fields.message ?? "";
