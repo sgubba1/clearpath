@@ -1,5 +1,6 @@
 import { AdForm } from "@/components/ad-form";
 import { PageHeader } from "@/components/page-header";
+import { EXAMPLE_ADS } from "@/lib/example-ads";
 import { getRateSheet } from "@/lib/rate-sheet";
 import { CHANNELS_FOR } from "@/lib/labels";
 import { requireRole } from "@/lib/session";
@@ -23,6 +24,7 @@ export default async function NewAdPage() {
       />
       <AdForm
         rateSheet={await getRateSheet()}
+        examples={EXAMPLE_ADS.filter((example) => example.for === (isAffiliate ? "affiliate" : "in_house"))}
         channels={channels}
         submitterLabel={isAffiliate ? `${identity.name}, ${identity.organization}` : identity.name}
         minLaunchDate={isoDate(0)}

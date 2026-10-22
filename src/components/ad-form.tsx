@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { Channel, Product } from "@/db/schema";
 import { CHANNEL_FIELDS, CHANNEL_HINTS, CHANNEL_LABELS, PRODUCT_LABELS, type ChannelField } from "@/lib/labels";
+import type { ExampleAd } from "@/lib/example-ads";
 import { getRule } from "@/lib/rules/catalog";
 import { applyFix, precheck, type Finding, type RateSheet } from "@/lib/rules/engine";
 import { cn } from "@/lib/utils";
@@ -29,9 +30,11 @@ type Props = {
   submitterLabel: string;
   minLaunchDate: string;
   rateSheet: RateSheet;
+  // Ready-made ads evaluators can load instead of writing copy (new ads only).
+  examples?: ExampleAd[];
 };
 
-export function AdForm({ draftId, initial, channels, submitterLabel, minLaunchDate, rateSheet }: Props) {
+export function AdForm({ draftId, initial, channels, submitterLabel, minLaunchDate, rateSheet, examples = [] }: Props) {
   const [state, formAction, pending] = useActionState<AdFormState, FormData>(saveAd, { errors: {} });
   // Controlled values survive validation errors and let the pre-check apply rewrites.
   const [values, setValues] = useState<AdFormValues>(initial);
@@ -95,6 +98,20 @@ export function AdForm({ draftId, initial, channels, submitterLabel, minLaunchDa
     setActiveKey(undefined);
   }
 
+  function loadExample(example: ExampleAd) {
+    setValues((current) => ({
+      ...current,
+      campaign: example.campaign,
+      product: example.product,
+      channel: example.channel,
+      fields: { ...example.fields },
+    }));
+    setUndoStack([]);
+    setRecentlyFixed(undefined);
+    setConfirming(false);
+    setActiveKey(undefined);
+  }
+
   function undo() {
     const previous = undoStack.at(-1);
     if (!previous) return;
@@ -115,6 +132,27 @@ export function AdForm({ draftId, initial, channels, submitterLabel, minLaunchDa
           <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
             {state.message}
           </p>
+        )}
+
+        {examples.length > 0 && (
+          <section aria-labelledby="examples-title" className="rounded-xl border border-dashed bg-card/60 p-4 sm:p-5">
+            <h2 id="examples-title" className="text-sm font-medium">
+              No copy handy? Load an example to see the pre-check at work.
+            </h2>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {examples.map((example) => (
+                <button
+                  key={example.id}
+                  type="button"
+                  onClick={() => loadExample(example)}
+                  className="rounded-lg border bg-background p-3 text-left text-sm transition-colors hover:border-primary/60 hover:bg-accent/40 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                >
+                  <span className="font-medium">{example.label}</span>
+                  <span className="mt-0.5 block text-muted-foreground">{example.description}</span>
+                </button>
+              ))}
+            </div>
+          </section>
         )}
 
         <Section title="About this ad">
