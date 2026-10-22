@@ -84,19 +84,15 @@ It also catches copy that *became* wrong when the rate sheet changed. The rule l
 - **It's advisory only.** It can't clear a flag, change the risk score or approve anything; a human reviewer always decides.
 - **It's optional.** Without a key, it says it's off and everything else works.
 
-**Four connected features, finished, instead of many shallow ones.** Pre-check, review, resubmission and the manager view each use the previous step's data. Email, SMS, social and affiliate placements have their own fields and checks; landing pages and paid search are a generic paste.
+**One connected loop rather than many separate tools.** Every part exists to take minutes off a review: the pre-check removes predictable fixes before submission, its flags set the queue's order and are already located when the reviewer opens the ad, and round 2 shows only what changed. Depth went to the channels with the most volume and risk: email, SMS, social and affiliate placements have their own fields and checks, while landing pages and paid search are a generic paste for now.
 
 **Managers oversee; reviewers decide.** Priya sees everything, owns the rule library and can send a stale approved ad back for an update, but approving and rejecting stay with reviewers, a separation an examiner would expect.
 
-**A role switcher instead of login.** It lets an evaluator see every perspective in minutes. Affiliates still only ever see their own partner's ads, and managers get read-only access to any ad. Real authentication (SSO for staff, invitations for partners) is next on the list.
+**A role switcher instead of login.** Anyone trying the prototype can see all four perspectives in minutes. Affiliates still only ever see their own partner's ads, and managers get read-only access to any ad. Real authentication (SSO for staff, invitations for partners) is next on the list.
 
-**Things I'd point out:**
-- Flagged text is highlighted in place, not just listed.
-- Fixes preserve the ad's own wording.
-- Every flag has a "why this matters".
-- Comments are tied to the exact phrase.
-- Color is never the only signal.
-- Pages work by keyboard and at phone width.
+**Feedback marketers can act on.** A flag without a reason reads as "no", which is a big part of why marketers and compliance end up at odds. So every flag says why it matters in plain language, points at the exact words, and suggests a fix that keeps the ad's own wording; reviewer comments attach to that same phrase. Marketers learn the rules as they write, so fewer problems reach review in the first place.
+
+**Usable by everyone, everywhere.** Severity and status always carry a text label, never color alone; every page works by keyboard and on a phone, where the pre-check sits above the submit button so flags are seen before sending.
 
 ## Assumptions
 
@@ -120,6 +116,29 @@ The manager view already tracks the three numbers that matter:
 3. **Rounds per approval.**
 
 In a real rollout I'd take a baseline for each from the team's existing Excel log, then compare by channel and by submitter, partners especially. I'd also track how often submitters apply suggested fixes, and which rules reviewers override, to tune or retire noisy rules.
+
+## What it could save
+
+A back-of-envelope estimate, not a measurement. Every input below is an assumption to replace with the team's own numbers, and the metrics in the demo are seeded, not evidence.
+
+| | Today (assumed) | With the pre-check and diffs (assumed) |
+|---|---|---|
+| Ads per month | 125 | 125 |
+| Rounds per approved ad | 1.8 | 1.4 |
+| Reviewer time, first round | 25 min | 20 min (issues already located, rate sheet alongside) |
+| Reviewer time, each later round | 25 min (full re-read) | 8 min (read the diff) |
+| **Reviewer time per ad** | **45 min** | **about 23 min** |
+
+That's roughly 45 reviewer hours a month for a three-person team, more than a full week of one reviewer's time, before counting faster launches for marketers. The biggest lever is fewer rounds, which is why the pre-check sits where the ad is written.
+
+## Known limitations
+
+- **Rules match words and numbers, not meaning.** Paraphrases slip past them; the AI second opinion and new team rules are the answer, and both still need a human reviewer.
+- **The AI second opinion hasn't been evaluated at scale.** It needs a test set and false-positive tracking before anyone relies on it.
+- **No real authentication,** and the demo shares one database, so visitors see each other's changes until someone resets it.
+- **Text only.** Images, video and live partner pages aren't checked.
+- **Team rules can be added and turned off, not edited,** and they match phrases or required text only.
+- **The regulatory content is illustrative.** A real library would be written and maintained by compliance counsel.
 
 ## How I'd roll it out
 
