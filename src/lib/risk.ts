@@ -33,3 +33,6 @@ export function riskLevel(score: number): RiskLevel {
   if (score >= 3) return "medium";
   return "low";
 }
+
+// Assumption: the team aims to give a first decision within two days of submission.
+export const REVIEW_TARGET_HOURS = 48;
