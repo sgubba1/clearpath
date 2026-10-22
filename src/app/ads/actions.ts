@@ -1,9 +1,9 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray, lt } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db";
-import { auditEvents, channelEnum, flags, productEnum, submissions, versions, type Channel, type Product } from "@/db/schema";
+import { auditEvents, channelEnum, comments, flags, productEnum, submissions, versions, type Channel, type Product } from "@/db/schema";
 import { daysUntil } from "@/lib/format";
 import type { Identity } from "@/lib/identities";
 import { CHANNEL_FIELDS, CHANNELS_FOR } from "@/lib/labels";
@@ -56,31 +56,81 @@ export async function saveAd(_prev: AdFormState, formData: FormData): Promise<Ad
     };
   }
 
+  const changeNote = String(formData.get("changeNote") ?? "").trim();
+  const risk = (launchDate: string) =>
+    riskScore({ openFlagSeverities: findings.map((finding) => finding.severity), submitterType, product, launchDate, now });
+  const flagRows = (versionId: number) =>
+    findings.map((finding) => ({
+      versionId,
+      ruleId: finding.ruleId,
+      field: finding.field,
+      matchText: finding.matchText,
+      detail: finding.detail ?? null,
+      start: finding.start,
+      end: finding.end,
+      severity: finding.severity,
+      status: "acknowledged" as const,
+      reason,
+    }));
+  const checkEvents = (id: number, round: number) => [
+    event(identity, id, round, "prechecked", findings.length ? `${findings.length} issue${findings.length === 1 ? "" : "s"} found` : "No issues found"),
+    ...(findings.length ? [event(identity, id, round, "flags_acknowledged", `Sent with ${findings.length} unresolved: "${reason}"`)] : []),
+  ];
+
   const submissionId = await db.transaction(async (tx) => {
-    let id = draftId;
+    const existing = draftId
+      ? await tx.query.submissions.findFirst({ where: and(eq(submissions.id, draftId), ownerFilter(identity)) })
+      : undefined;
+    if (draftId && !existing) throw new Error("This ad can't be found in your account.");
+
+    // A sent-back ad becomes a new round; product and channel stay as they were.
+    if (existing?.status === "changes_requested") {
+      if (!submitting) throw new Error("Revisions are sent, not saved as drafts.");
+      const round = existing.currentVersion + 1;
+      const [version] = await tx
+        .insert(versions)
+        .values({ submissionId: existing.id, number: round, fields, changeNote: changeNote || null, createdAt: now })
+        .returning({ id: versions.id });
+      if (findings.length) await tx.insert(flags).values(flagRows(version.id));
+      await tx
+        .update(submissions)
+        .set({
+          campaign: values.campaign.trim(),
+          launchDate: values.launchDate,
+          status: "submitted",
+          riskScore: risk(values.launchDate),
+          currentVersion: round,
+          submittedAt: now,
+          decidedAt: null,
+          updatedAt: now,
+        })
+        .where(eq(submissions.id, existing.id));
+      // Feedback on earlier rounds is answered by this one.
+      const earlier = await tx.select({ id: versions.id }).from(versions).where(and(eq(versions.submissionId, existing.id), lt(versions.number, round)));
+      await tx.update(comments).set({ resolved: true }).where(inArray(comments.versionId, earlier.map((v) => v.id)));
+      await tx.insert(auditEvents).values([...checkEvents(existing.id, round), event(identity, existing.id, round, "resubmitted", changeNote || undefined)]);
+      return existing.id;
+    }
+
     const base = {
       product,
       channel,
       campaign: values.campaign.trim(),
       launchDate: values.launchDate,
       status: submitting ? ("submitted" as const) : ("draft" as const),
-      riskScore: submitting
-        ? riskScore({ openFlagSeverities: findings.map((finding) => finding.severity), submitterType, product, launchDate: values.launchDate, now })
-        : 0,
+      riskScore: submitting ? risk(values.launchDate) : 0,
       submittedAt: submitting ? now : null,
       firstSubmittedAt: submitting ? now : null,
       updatedAt: now,
     };
 
+    let id: number;
     let versionId: number;
-    if (id) {
+    if (existing) {
       // Drafts are edited in place; they only become a numbered round once submitted.
-      const [owned] = await tx
-        .update(submissions)
-        .set(base)
-        .where(and(eq(submissions.id, id), eq(submissions.status, "draft"), ownerFilter(identity)))
-        .returning({ id: submissions.id });
-      if (!owned) throw new Error("This draft can't be edited. It may have been submitted already.");
+      if (existing.status !== "draft") throw new Error("This ad was already sent, so it can't be edited as a draft.");
+      id = existing.id;
+      await tx.update(submissions).set(base).where(eq(submissions.id, id));
       const [version] = await tx
         .update(versions)
         .set({ fields, createdAt: now })
@@ -103,31 +153,12 @@ export async function saveAd(_prev: AdFormState, formData: FormData): Promise<Ad
       id = created.id;
       const [version] = await tx.insert(versions).values({ submissionId: id, number: 1, fields, createdAt: now }).returning({ id: versions.id });
       versionId = version.id;
-      await tx.insert(auditEvents).values(event(identity, id, "created", base.campaign));
+      await tx.insert(auditEvents).values(event(identity, id, 1, "created", base.campaign));
     }
 
     if (submitting) {
-      if (findings.length) {
-        await tx.insert(flags).values(
-          findings.map((finding) => ({
-            versionId,
-            ruleId: finding.ruleId,
-            field: finding.field,
-            matchText: finding.matchText,
-            detail: finding.detail ?? null,
-            start: finding.start,
-            end: finding.end,
-            severity: finding.severity,
-            status: "acknowledged" as const,
-            reason,
-          })),
-        );
-      }
-      await tx.insert(auditEvents).values([
-        event(identity, id, "prechecked", findings.length ? `${findings.length} issue${findings.length === 1 ? "" : "s"} found` : "No issues found"),
-        ...(findings.length ? [event(identity, id, "flags_acknowledged", `Sent with ${findings.length} unresolved: "${reason}"`)] : []),
-        event(identity, id, "submitted"),
-      ]);
+      if (findings.length) await tx.insert(flags).values(flagRows(versionId));
+      await tx.insert(auditEvents).values([...checkEvents(id, 1), event(identity, id, 1, "submitted")]);
     }
     return id;
   });
@@ -139,10 +170,10 @@ function ownerFilter(identity: Identity) {
   return identity.role === "affiliate" ? eq(submissions.partnerId, identity.id) : eq(submissions.submitterId, identity.id);
 }
 
-function event(identity: Identity, submissionId: number, action: string, detail?: string) {
+function event(identity: Identity, submissionId: number, versionNumber: number, action: string, detail?: string) {
   return {
     submissionId,
-    versionNumber: 1,
+    versionNumber,
     actorId: identity.id,
     actorName: identity.name,
     actorRole: identity.role,
