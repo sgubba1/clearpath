@@ -1,23 +1,12 @@
-import { applyFix, precheck, type RateSheet } from "../src/lib/rules/engine";
+import { applyFix, precheck } from "../src/lib/rules/engine";
+import { toRateSheet } from "../src/lib/rate-sheet";
 import { TEST_ADS } from "../src/lib/rules/test-ads";
 import { RATE_SHEET } from "../src/lib/reference-data";
 
 // Runs every test ad through the pre-check and compares flags with what's expected.
 // Uses the rate sheet from code so it needs no database. Exits non-zero on any mismatch.
 
-const rateSheet = Object.fromEntries(
-  RATE_SHEET.map((r) => [
-    r.product,
-    {
-      aprMin: r.aprMin,
-      aprMax: r.aprMax,
-      termMinMonths: r.termMinMonths ?? null,
-      termMaxMonths: r.termMaxMonths ?? null,
-      introAprMonths: r.introAprMonths ?? null,
-      nmlsId: r.nmlsId ?? null,
-    },
-  ]),
-) as RateSheet;
+const rateSheet = toRateSheet(RATE_SHEET);
 
 const count = (ids: string[]) => ids.slice().sort().join(", ") || "none";
 let failures = 0;

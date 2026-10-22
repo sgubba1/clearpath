@@ -27,19 +27,10 @@ export type PersonKey = keyof typeof PEOPLE;
 type SubmitterKey = "maya" | "sam" | "lena" | "brightpath" | "fundfinder" | "cardcompass";
 type ReviewerKey = "dev" | "hannah" | "marcus";
 
-export type SeedFlag = {
-  rule: RuleId;
-  field: string;
-  // Exact text in the field. Omit for rules about something missing (the flag points at the whole field).
-  match?: string;
-  status?: "open" | "acknowledged" | "dismissed";
-  reason?: string;
-};
-
 export type SeedComment = {
   author: ReviewerKey;
   body: string;
-  // Rule of the flag this comment is about; omit for a general note on the round.
+  // Rule of the flag this comment is about (the first flag for that rule); omit for a general note on the round.
   onFlag?: RuleId;
   hoursAgo: number;
 };
@@ -48,7 +39,9 @@ export type SeedVersion = {
   hoursAgo: number;
   fields: Record<string, string>;
   changeNote?: string;
-  flags?: SeedFlag[];
+  // Flags come from running the pre-check on these fields. If any are found, the submitter
+  // sent it anyway with this reason.
+  reason?: string;
   comments?: SeedComment[];
 };
 
@@ -84,15 +77,9 @@ export const SUBMISSIONS: SeedSubmission[] = [
         hoursAgo: 5,
         fields: {
           placementUrl: "https://fundfinder-daily.example.com/best-personal-loans",
-          copy: "Guaranteed approval, no credit check, just $199/month! FundFinder Daily is the lender that says yes when banks say no. Best rates guaranteed. Apply in 60 seconds.",
+          copy: "Guaranteed approval with no credit check! Borrow $5,000 for just $199/month. FundFinder Daily is the lender that says yes when banks say no. Best rates guaranteed, apply in 60 seconds.",
         },
-        flags: [
-          { rule: "guaranteed-approval", field: "copy", match: "Guaranteed approval", status: "acknowledged", reason: "This wording ran on our site last year without issues." },
-          { rule: "no-credit-check", field: "copy", match: "no credit check", status: "acknowledged", reason: "This wording ran on our site last year without issues." },
-          { rule: "closed-end-trigger-terms", field: "copy", match: "just $199/month", status: "acknowledged", reason: "This wording ran on our site last year without issues." },
-          { rule: "affiliate-implies-lender", field: "copy", match: "is the lender", status: "acknowledged", reason: "This wording ran on our site last year without issues." },
-          { rule: "affiliate-implies-lender", field: "copy", match: "Best rates guaranteed", status: "acknowledged", reason: "This wording ran on our site last year without issues." },
-        ],
+        reason: "This wording ran on our site last year without issues.",
       },
     ],
   },
@@ -111,9 +98,7 @@ export const SUBMISSIONS: SeedSubmission[] = [
           placementUrl: "https://cardcompass.example.com/reviews/clearpath-personal-loan",
           copy: "Our pick for debt consolidation: ClearPath Financial personal loans with rates as low as 4.99% APR, terms from 24 to 60 months and no prepayment penalty. Checking your rate won't affect your credit score.",
         },
-        flags: [
-          { rule: "rate-not-offered", field: "copy", match: "4.99% APR", status: "acknowledged", reason: "Taken from ClearPath's rates page in March." },
-        ],
+        reason: "Taken from ClearPath's rates page in March.",
       },
     ],
   },
@@ -132,9 +117,7 @@ export const SUBMISSIONS: SeedSubmission[] = [
           message: "ClearPath: Home repairs can't wait. Personal loans at 8.99%-35.99% APR, 24-60 mo terms. Check your rate: clearpath.example.com/r/home",
           consentSource: "Opt-in checkbox at checkout on clearpath.example.com",
         },
-        flags: [
-          { rule: "sms-opt-out", field: "message", status: "acknowledged", reason: "Our SMS vendor appends opt-out text automatically." },
-        ],
+        reason: "Our SMS vendor appends opt-out text automatically.",
       },
     ],
   },
@@ -156,9 +139,7 @@ export const SUBMISSIONS: SeedSubmission[] = [
           postCopy: "Thinking about buying next year? See if you prequalify for a home loan in minutes. Rates from 6.42% APR. Checking won't affect your credit score.",
           link: "https://clearpath.example.com/mortgage/prequal",
         },
-        flags: [
-          { rule: "missing-nmls", field: "postCopy", status: "acknowledged", reason: "The NMLS ID is on the landing page the post links to." },
-        ],
+        reason: "The NMLS ID is on the landing page the post links to.",
       },
     ],
   },
@@ -179,9 +160,7 @@ export const SUBMISSIONS: SeedSubmission[] = [
           body: "Kitchen refresh? New roof? Borrow $10,000 and pay just $208/month for 60 months. Funds can arrive as soon as the next business day.",
           footer: FOOTER,
         },
-        flags: [
-          { rule: "closed-end-trigger-terms", field: "body", match: "pay just $208/month for 60 months", status: "acknowledged", reason: "APR is on the landing page; I wanted to keep the email short." },
-        ],
+        reason: "APR is on the landing page; I wanted to keep the email short.",
         comments: [
           { author: "dev", onFlag: "closed-end-trigger-terms", body: "The payment needs the APR right next to it, not just on the landing page. Our lowest rate is 8.99%, which matches $208/month on $10,000 over 60 months.", hoursAgo: 20 },
           { author: "dev", body: "Everything else is good. Add the APR and the full range and I can approve this quickly.", hoursAgo: 20 },
@@ -218,11 +197,7 @@ export const SUBMISSIONS: SeedSubmission[] = [
           body: "You're preapproved for the ClearPath Cash Back Card! Earn 2% cash back on everything, with 0% intro APR and no annual fee. Claim your card today.",
           footer: FOOTER,
         },
-        flags: [
-          { rule: "preapproved-claim", field: "subject", match: "you're preapproved", status: "acknowledged", reason: "Sending to the Q3 customer list." },
-          { rule: "preapproved-claim", field: "body", match: "You're preapproved", status: "acknowledged", reason: "Sending to the Q3 customer list." },
-          { rule: "open-end-trigger-terms", field: "body", match: "0% intro APR", status: "acknowledged", reason: "Sending to the Q3 customer list." },
-        ],
+        reason: "Sending to the Q3 customer list.",
         comments: [
           { author: "dev", onFlag: "preapproved-claim", body: "The Q3 list isn't a prescreened firm-offer list, so we can't say preapproved. \"See if you prequalify\" works in both places.", hoursAgo: 6 },
           { author: "dev", onFlag: "open-end-trigger-terms", body: "Add the intro length and the ongoing rate: \"0% intro APR on purchases for 12 months, then 19.99%–29.99% variable APR.\"", hoursAgo: 6 },
@@ -248,9 +223,7 @@ export const SUBMISSIONS: SeedSubmission[] = [
           placementUrl: "https://brightpath-rates.example.com/cards/cash-back",
           copy: "Our top cash back pick: the ClearPath Cash Back Card. Earn 2% on everything, pay no annual fee and enjoy 0% intro APR!",
         },
-        flags: [
-          { rule: "open-end-trigger-terms", field: "copy", match: "0% intro APR", status: "acknowledged", reason: "Space is limited in the roundup widget." },
-        ],
+        reason: "Space is limited in the roundup widget.",
         comments: [
           { author: "dev", onFlag: "open-end-trigger-terms", body: "Add \"for 12 months, then 19.99%–29.99% variable APR\" after the intro offer. It fits on one more line in the widget.", hoursAgo: 4 },
           { author: "dev", body: "The rest looks good. Once the rate terms are in, this is ready to approve.", hoursAgo: 4 },
@@ -276,7 +249,7 @@ export const SUBMISSIONS: SeedSubmission[] = [
           placementUrl: "https://brightpath-rates.example.com/personal-loans",
           copy: "Need $5,000 to $40,000? We'll lend you the money at 8.99%–35.99% APR with 24–60 month terms.",
         },
-        flags: [{ rule: "affiliate-implies-lender", field: "copy", match: "We'll lend you the money", status: "acknowledged", reason: "Just a figure of speech." }],
+        reason: "Just a figure of speech.",
         comments: [
           { author: "hannah", onFlag: "affiliate-implies-lender", body: "ClearPath is the lender here, not BrightPath. Try \"Compare ClearPath personal loans\".", hoursAgo: 148 },
         ],
@@ -373,11 +346,7 @@ export const SUBMISSIONS: SeedSubmission[] = [
           placementUrl: "https://cardcompass.example.com/fair-credit",
           copy: "Fair credit? ClearPath approves everyone. Guaranteed approval and the lowest rate guaranteed on the ClearPath Cash Back Card.",
         },
-        flags: [
-          { rule: "guaranteed-approval", field: "copy", match: "approves everyone", status: "acknowledged", reason: "Standard language on our fair-credit pages." },
-          { rule: "guaranteed-approval", field: "copy", match: "Guaranteed approval", status: "acknowledged", reason: "Standard language on our fair-credit pages." },
-          { rule: "affiliate-implies-lender", field: "copy", match: "lowest rate guaranteed", status: "acknowledged", reason: "Standard language on our fair-credit pages." },
-        ],
+        reason: "Standard language on our fair-credit pages.",
         comments: [
           {
             author: "marcus",
@@ -458,6 +427,13 @@ export const CLEAN_COPY: Record<Product, string> = {
   credit_card:
     "Earn 2% cash back on every purchase with the ClearPath Cash Back Card. 0% intro APR on purchases for 12 months, then 19.99%–29.99% variable APR. No annual fee.",
   mortgage_prequal: `See if you prequalify for a home loan in minutes. Rates from 6.42% APR. ${NMLS} Prequalification is not a commitment to lend.`,
+};
+
+// Copy without rate terms, used when a history item's first round tripped a trigger-term rule.
+export const COPY_WITHOUT_TERMS: Record<Product, string> = {
+  personal_loan: "Consolidate high-interest debt into one fixed monthly payment. Checking your rate won't affect your credit score.",
+  credit_card: "Earn 2% cash back on every purchase with the ClearPath Cash Back Card. No annual fee.",
+  mortgage_prequal: `See if you prequalify for a home loan in minutes. ${NMLS}`,
 };
 
 export const SHORT_COPY: Record<Product, string> = {

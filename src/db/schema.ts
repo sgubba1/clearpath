@@ -102,6 +102,8 @@ export const flags = pgTable("flags", {
   ruleId: text("rule_id").notNull(),
   field: text("field").notNull(),
   matchText: text("match_text").notNull(),
+  // Instance-specific explanation, e.g. which rate is off the rate sheet.
+  detail: text("detail"),
   start: integer("start").notNull(),
   end: integer("end").notNull(),
   severity: severityEnum("severity").notNull(),

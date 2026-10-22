@@ -1,11 +1,14 @@
 import { sql } from "drizzle-orm";
 import type { Db } from "@/db";
 import { auditEvents, comments, flags, partners, rateSheet, submissions, versions, type Channel, type Product } from "@/db/schema";
+import { toRateSheet } from "@/lib/rate-sheet";
+import { precheck } from "@/lib/rules/engine";
 import { getRule, type RuleId } from "@/lib/rules/catalog";
 import { PARTNERS, RATE_SHEET } from "@/lib/reference-data";
 import { riskScore } from "@/lib/risk";
 import {
   CLEAN_COPY,
+  COPY_WITHOUT_TERMS,
   FOOTER,
   HISTORY,
   PEOPLE,
@@ -19,6 +22,7 @@ import {
 } from "@/db/seed-data";
 
 const HOUR = 3_600_000;
+const RATES = toRateSheet(RATE_SHEET);
 
 type SubmissionRow = typeof submissions.$inferInsert;
 type VersionRow = typeof versions.$inferInsert;
@@ -90,9 +94,10 @@ function planSubmission(item: SeedSubmission, ago: (hours: number) => Date, inDa
   const isDraft = item.status === "draft";
   const launchDate = inDays(item.launchInDays);
 
-  const latestFlags = (latest.flags ?? []).filter((flag) => flag.status !== "dismissed");
+  // Flags come from the real pre-check, so the demo always matches what the rules catch.
+  const findingsFor = (version: SeedVersion) => precheck({ product: item.product, channel: item.channel, fields: version.fields }, RATES);
   const score = riskScore({
-    openFlagSeverities: latestFlags.map((flag) => getRule(flag.rule).severity),
+    openFlagSeverities: findingsFor(latest).map((finding) => finding.severity),
     submitterType: submitter.role === "affiliate" ? "affiliate" : "in_house",
     product: item.product,
     launchDate,
@@ -143,23 +148,25 @@ function planSubmission(item: SeedSubmission, ago: (hours: number) => Date, inDa
     const number = index + 1;
     const versionAt = ago(version.hoursAgo);
 
-    const flagRows = (version.flags ?? []).map((flag) => {
-      const text = version.fields[flag.field];
-      if (text === undefined) throw new Error(`Seed: field "${flag.field}" missing in "${item.campaign}"`);
-      // Flags for something missing point at the end of the field.
-      const start = flag.match ? text.indexOf(flag.match) : text.length;
-      if (start < 0) throw new Error(`Seed: "${flag.match}" not found in "${item.campaign}"`);
-      return {
-        ruleId: flag.rule,
-        field: flag.field,
-        matchText: flag.match ?? "",
-        start,
-        end: start + (flag.match?.length ?? 0),
-        severity: getRule(flag.rule).severity,
-        status: flag.status ?? "open",
-        reason: flag.reason ?? null,
-      };
-    });
+    const flagRows = isDraft
+      ? []
+      : findingsFor(version).map((finding) => ({
+          ruleId: finding.ruleId,
+          field: finding.field,
+          matchText: finding.matchText,
+          detail: finding.detail ?? null,
+          start: finding.start,
+          end: finding.end,
+          severity: finding.severity,
+          // Anything still flagged at submit was sent with a reason.
+          status: "acknowledged" as const,
+          reason: version.reason ?? "Sent without changes.",
+        }));
+    for (const comment of version.comments ?? []) {
+      if (comment.onFlag && !flagRows.some((flag) => flag.ruleId === comment.onFlag)) {
+        throw new Error(`Seed: comment on "${comment.onFlag}" but the pre-check found no such flag in "${item.campaign}"`);
+      }
+    }
 
     plan.versions.push({
       row: { number, fields: version.fields, changeNote: version.changeNote ?? null, createdAt: versionAt },
@@ -217,23 +224,23 @@ function historyToSubmission([product, channel, submitter, reviewer, daysAgo, ho
   const firstHoursAgo = daysAgo * 24;
   const decidedHoursAgo = firstHoursAgo - hoursToDecision;
   const issueText = issues.map((rule) => VIOLATION_PHRASES[rule]).join(" ");
-  const mainField = mainFieldFor(channel);
 
-  const v1Fields = fieldsFor(channel, product, submitter, issueText ? `${issueText} ${CLEAN_COPY[product]}` : undefined);
+  // Trigger-term issues only show up when the rate terms are missing, so drop them from round 1.
+  const tripsTriggerRule = issues.some((rule) => rule === "closed-end-trigger-terms" || rule === "open-end-trigger-terms");
+  const v1Copy = issueText ? `${issueText} ${(tripsTriggerRule ? COPY_WITHOUT_TERMS : CLEAN_COPY)[product]}` : undefined;
   const v1: SeedVersion = {
     hoursAgo: firstHoursAgo,
-    fields: v1Fields,
-    flags: issues.map((rule) => ({
-      rule,
-      field: mainField,
-      match: VIOLATION_PHRASES[rule as RuleId],
-      status: "acknowledged" as const,
-      reason: "Reviewed with my manager before submitting.",
-    })),
+    fields: fieldsFor(channel, product, submitter, v1Copy),
+    reason: issues.length ? "Reviewed with my manager before submitting." : undefined,
     comments: issues.length
       ? [{ author: reviewer, onFlag: issues[0], body: getRule(issues[0]).fixHint, hoursAgo: firstHoursAgo - hoursToDecision * 0.4 }]
       : [],
   };
+
+  const found = precheck({ product, channel, fields: v1.fields }, RATES).map((finding) => finding.ruleId);
+  if (found.slice().sort().join() !== issues.slice().sort().join()) {
+    throw new Error(`Seed: "${campaign}" expected ${issues.join(", ") || "no flags"} but the pre-check found ${found.join(", ") || "none"}`);
+  }
 
   const fixedInRound2 = issues.length > 0 && outcome === "approved";
   const versionsList: SeedVersion[] = fixedInRound2
@@ -252,10 +259,6 @@ function historyToSubmission([product, channel, submitter, reviewer, daysAgo, ho
     decidedHoursAgo,
     versions: versionsList,
   };
-}
-
-function mainFieldFor(channel: Channel) {
-  return { email: "body", sms: "message", social: "postCopy", affiliate: "copy", landing_page: "copy", paid_search: "copy" }[channel];
 }
 
 function fieldsFor(channel: Channel, product: Product, submitter: PersonKey, copy?: string): Record<string, string> {
