@@ -22,6 +22,10 @@ export type AdFormValues = {
 
 export type AdFormState = { errors: Record<string, string>; message?: string };
 
+// Problems the submitter can act on (the ad was already sent, or no longer exists). These show
+// as a message on the form instead of an error page.
+class SaveProblem extends Error {}
+
 export async function saveAd(_prev: AdFormState, formData: FormData): Promise<AdFormState> {
   const identity = await getIdentity();
   if (!identity || (identity.role !== "marketer" && identity.role !== "affiliate")) {
@@ -77,91 +81,97 @@ export async function saveAd(_prev: AdFormState, formData: FormData): Promise<Ad
     ...(findings.length ? [event(identity, id, round, "flags_acknowledged", `Sent with ${findings.length} unresolved: "${reason}"`)] : []),
   ];
 
-  const submissionId = await db.transaction(async (tx) => {
-    const existing = draftId
-      ? await tx.query.submissions.findFirst({ where: and(eq(submissions.id, draftId), ownerFilter(identity)) })
-      : undefined;
-    if (draftId && !existing) throw new Error("This ad can't be found in your account.");
+  let submissionId: number;
+  try {
+    submissionId = await db.transaction(async (tx) => {
+      const existing = draftId
+        ? await tx.query.submissions.findFirst({ where: and(eq(submissions.id, draftId), ownerFilter(identity)) })
+        : undefined;
+      if (draftId && !existing) throw new SaveProblem("This ad no longer exists. It may have been removed when the demo data was reset. Start a new ad from My ads.");
 
-    // A sent-back ad becomes a new round; product and channel stay as they were.
-    if (existing?.status === "changes_requested") {
-      if (!submitting) throw new Error("Revisions are sent, not saved as drafts.");
-      const round = existing.currentVersion + 1;
-      const [version] = await tx
-        .insert(versions)
-        .values({ submissionId: existing.id, number: round, fields, changeNote: changeNote || null, createdAt: now })
-        .returning({ id: versions.id });
-      if (findings.length) await tx.insert(flags).values(flagRows(version.id));
-      await tx
-        .update(submissions)
-        .set({
-          campaign: values.campaign.trim(),
-          launchDate: values.launchDate,
-          status: "submitted",
-          riskScore: risk(values.launchDate),
-          currentVersion: round,
-          submittedAt: now,
-          decidedAt: null,
-          updatedAt: now,
-        })
-        .where(eq(submissions.id, existing.id));
-      // Feedback on earlier rounds is answered by this one.
-      const earlier = await tx.select({ id: versions.id }).from(versions).where(and(eq(versions.submissionId, existing.id), lt(versions.number, round)));
-      await tx.update(comments).set({ resolved: true }).where(inArray(comments.versionId, earlier.map((v) => v.id)));
-      await tx.insert(auditEvents).values([...checkEvents(existing.id, round), event(identity, existing.id, round, "resubmitted", changeNote || undefined)]);
-      return existing.id;
-    }
+      // A sent-back ad becomes a new round; product and channel stay as they were.
+      if (existing?.status === "changes_requested") {
+        if (!submitting) throw new SaveProblem("A revision can't be saved as a draft. Resubmit it when it's ready.");
+        const round = existing.currentVersion + 1;
+        const [version] = await tx
+          .insert(versions)
+          .values({ submissionId: existing.id, number: round, fields, changeNote: changeNote || null, createdAt: now })
+          .returning({ id: versions.id });
+        if (findings.length) await tx.insert(flags).values(flagRows(version.id));
+        await tx
+          .update(submissions)
+          .set({
+            campaign: values.campaign.trim(),
+            launchDate: values.launchDate,
+            status: "submitted",
+            riskScore: risk(values.launchDate),
+            currentVersion: round,
+            submittedAt: now,
+            decidedAt: null,
+            updatedAt: now,
+          })
+          .where(eq(submissions.id, existing.id));
+        // Feedback on earlier rounds is answered by this one.
+        const earlier = await tx.select({ id: versions.id }).from(versions).where(and(eq(versions.submissionId, existing.id), lt(versions.number, round)));
+        await tx.update(comments).set({ resolved: true }).where(inArray(comments.versionId, earlier.map((v) => v.id)));
+        await tx.insert(auditEvents).values([...checkEvents(existing.id, round), event(identity, existing.id, round, "resubmitted", changeNote || undefined)]);
+        return existing.id;
+      }
 
-    const base = {
-      product,
-      channel,
-      campaign: values.campaign.trim(),
-      launchDate: values.launchDate,
-      status: submitting ? ("submitted" as const) : ("draft" as const),
-      riskScore: submitting ? risk(values.launchDate) : 0,
-      submittedAt: submitting ? now : null,
-      firstSubmittedAt: submitting ? now : null,
-      updatedAt: now,
-    };
+      const base = {
+        product,
+        channel,
+        campaign: values.campaign.trim(),
+        launchDate: values.launchDate,
+        status: submitting ? ("submitted" as const) : ("draft" as const),
+        riskScore: submitting ? risk(values.launchDate) : 0,
+        submittedAt: submitting ? now : null,
+        firstSubmittedAt: submitting ? now : null,
+        updatedAt: now,
+      };
 
-    let id: number;
-    let versionId: number;
-    if (existing) {
-      // Drafts are edited in place; they only become a numbered round once submitted.
-      if (existing.status !== "draft") throw new Error("This ad was already sent, so it can't be edited as a draft.");
-      id = existing.id;
-      await tx.update(submissions).set(base).where(eq(submissions.id, id));
-      const [version] = await tx
-        .update(versions)
-        .set({ fields, createdAt: now })
-        .where(and(eq(versions.submissionId, id), eq(versions.number, 1)))
-        .returning({ id: versions.id });
-      versionId = version.id;
-    } else {
-      const [created] = await tx
-        .insert(submissions)
-        .values({
-          ...base,
-          submitterId: identity.id,
-          submitterName: identity.name,
-          submitterType,
-          partnerId: identity.role === "affiliate" ? identity.id : null,
-          currentVersion: 1,
-          createdAt: now,
-        })
-        .returning({ id: submissions.id });
-      id = created.id;
-      const [version] = await tx.insert(versions).values({ submissionId: id, number: 1, fields, createdAt: now }).returning({ id: versions.id });
-      versionId = version.id;
-      await tx.insert(auditEvents).values(event(identity, id, 1, "created", base.campaign));
-    }
+      let id: number;
+      let versionId: number;
+      if (existing) {
+        // Drafts are edited in place; they only become a numbered round once submitted.
+        if (existing.status !== "draft") throw new SaveProblem("This ad was already sent to compliance, so it can't be edited as a draft anymore. Reload to see its status.");
+        id = existing.id;
+        await tx.update(submissions).set(base).where(eq(submissions.id, id));
+        const [version] = await tx
+          .update(versions)
+          .set({ fields, createdAt: now })
+          .where(and(eq(versions.submissionId, id), eq(versions.number, 1)))
+          .returning({ id: versions.id });
+        versionId = version.id;
+      } else {
+        const [created] = await tx
+          .insert(submissions)
+          .values({
+            ...base,
+            submitterId: identity.id,
+            submitterName: identity.name,
+            submitterType,
+            partnerId: identity.role === "affiliate" ? identity.id : null,
+            currentVersion: 1,
+            createdAt: now,
+          })
+          .returning({ id: submissions.id });
+        id = created.id;
+        const [version] = await tx.insert(versions).values({ submissionId: id, number: 1, fields, createdAt: now }).returning({ id: versions.id });
+        versionId = version.id;
+        await tx.insert(auditEvents).values(event(identity, id, 1, "created", base.campaign));
+      }
 
-    if (submitting) {
-      if (findings.length) await tx.insert(flags).values(flagRows(versionId));
-      await tx.insert(auditEvents).values([...checkEvents(id, 1), event(identity, id, 1, "submitted")]);
-    }
-    return id;
-  });
+      if (submitting) {
+        if (findings.length) await tx.insert(flags).values(flagRows(versionId));
+        await tx.insert(auditEvents).values([...checkEvents(id, 1), event(identity, id, 1, "submitted")]);
+      }
+      return id;
+    });
+  } catch (error) {
+    if (error instanceof SaveProblem) return { errors: {}, message: error.message };
+    throw error;
+  }
 
   redirect(`/ads/${submissionId}?${submitting ? "sent" : "saved"}=1`);
 }
