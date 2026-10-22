@@ -1,9 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { StatusBadge } from "@/components/badges";
 import { EmptyState, PageHeader } from "@/components/page-header";
+import { TimeAgo } from "@/components/time-ago";
 import { Button } from "@/components/ui/button";
 import type { Status } from "@/db/schema";
-import { decisionExpectation, timeAgo } from "@/lib/format";
+import { decisionExpectation } from "@/lib/format";
 import { CHANNEL_LABELS, PRODUCT_LABELS, submissionRef } from "@/lib/labels";
 import { getMyAds } from "@/lib/queries";
 import { REVIEW_TARGET_HOURS } from "@/lib/risk";
@@ -15,6 +17,8 @@ const GROUPS: { title: string; statuses: Status[] }[] = [
   { title: "With compliance", statuses: ["submitted", "in_review"] },
   { title: "Done", statuses: ["approved", "rejected"] },
 ];
+
+export const metadata: Metadata = { title: "My ads" };
 
 export default async function MyAdsPage() {
   const identity = await requireRole(["marketer", "affiliate"]);
@@ -61,7 +65,7 @@ export default async function MyAdsPage() {
                         <p className="font-medium">{ad.campaign}</p>
                         <p className="text-sm text-muted-foreground">
                           {submissionRef(ad.id)} · {CHANNEL_LABELS[ad.channel]} · {PRODUCT_LABELS[ad.product]} · Updated{" "}
-                          {timeAgo(ad.updatedAt)}
+                          <TimeAgo date={ad.updatedAt} />
                         </p>
                         {(ad.status === "submitted" || ad.status === "in_review") && (
                           <p className="text-sm text-sky-900">{decisionExpectation(ad.status, ad.submittedAt, ad.reviewerName, REVIEW_TARGET_HOURS)}</p>

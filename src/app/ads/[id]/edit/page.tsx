@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { AdForm, type RevisionFeedback } from "@/components/ad-form";
 import { PageHeader } from "@/components/page-header";
@@ -8,6 +9,10 @@ import { getRateSheet } from "@/lib/rate-sheet";
 import { getTeamRules } from "@/lib/team-rules";
 import { getRule } from "@/lib/rules/catalog";
 import { requireRole } from "@/lib/session";
+
+export async function generateMetadata({ params }: PageProps<"/ads/[id]/edit">): Promise<Metadata> {
+  return { title: `Edit ${submissionRef(Number((await params).id))}` };
+}
 
 // Drafts are edited in place; ads compliance sent back are revised into a new round.
 export default async function EditAdPage({ params }: PageProps<"/ads/[id]/edit">) {

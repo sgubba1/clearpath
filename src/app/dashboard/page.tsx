@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Tag } from "@/components/badges";
 import { EmptyState, PageHeader } from "@/components/page-header";
+import { TimeAgo } from "@/components/time-ago";
 import { describeEvent } from "@/lib/activity";
-import { timeAgo } from "@/lib/format";
 import { submissionRef } from "@/lib/labels";
 import { getAuditLog, getTeamMetrics, type TeamMetrics } from "@/lib/metrics";
 import { REVIEW_TARGET_HOURS } from "@/lib/risk";
@@ -112,7 +112,7 @@ function Overview({ metrics }: { metrics: TeamMetrics }) {
                 </Link>
                 <span className="text-muted-foreground">
                   {" "}
-                  · {submissionRef(item.id)} · {item.submitterName} · approved {item.decidedAt ? timeAgo(item.decidedAt) : ""}
+                  · {submissionRef(item.id)} · {item.submitterName} · approved {item.decidedAt && <TimeAgo date={item.decidedAt} />}
                 </span>
                 <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
                   <p>
@@ -241,9 +241,9 @@ async function AuditLog() {
                 </Link>
               )}
             </div>
-            <time dateTime={event.createdAt.toISOString()} title={event.createdAt.toLocaleString("en-US")} className="shrink-0 text-xs text-muted-foreground">
-              {timeAgo(event.createdAt)}
-            </time>
+            <span className="shrink-0 text-xs text-muted-foreground">
+              <TimeAgo date={event.createdAt} />
+            </span>
           </li>
         ))}
       </ol>

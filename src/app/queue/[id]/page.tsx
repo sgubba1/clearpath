@@ -7,6 +7,7 @@ import { ClaimOnOpen } from "@/components/claim-on-open";
 import { Button } from "@/components/ui/button";
 import { ReviewWorkspace } from "@/components/review-workspace";
 import { RoundChanges } from "@/components/round-changes";
+import { TimeAgo } from "@/components/time-ago";
 import { describeEvent } from "@/lib/activity";
 import { aiReviewEnabled } from "@/lib/ai-review";
 import { formatDate, launchLabel, timeAgo, waitingFor } from "@/lib/format";
@@ -170,9 +171,9 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/q
           {item.auditEvents.map((event) => (
             <li key={event.id} className="flex flex-wrap justify-between gap-x-4">
               <span>{describeEvent(event)}</span>
-              <time dateTime={event.createdAt.toISOString()} title={event.createdAt.toLocaleString("en-US")} className="text-muted-foreground">
-                {timeAgo(event.createdAt)}
-              </time>
+              <span className="text-muted-foreground">
+                <TimeAgo date={event.createdAt} />
+              </span>
             </li>
           ))}
         </ol>

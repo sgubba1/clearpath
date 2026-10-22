@@ -1,9 +1,9 @@
 import { diffWords } from "diff";
 import { CheckCircle2Icon } from "lucide-react";
+import { TimeAgo } from "@/components/time-ago";
 import type { Channel, Flag } from "@/db/schema";
 import { CHANNEL_FIELDS } from "@/lib/labels";
 import { getRule } from "@/lib/rules/catalog";
-import { timeAgo } from "@/lib/format";
 
 type Comment = { id: number; authorName: string; body: string; createdAt: Date; flagId: number | null };
 type Round = { number: number; fields: Record<string, string>; changeNote: string | null; flags: Flag[]; comments: Comment[] };
@@ -84,7 +84,7 @@ export function RoundChanges({ channel, previous, current }: { channel: Channel;
                   {flag && <p className="text-xs font-medium">On: {getRule(flag.ruleId).title}</p>}
                   <p className="text-foreground/80">{comment.body}</p>
                   <p className="mt-1 text-xs">
-                    {comment.authorName} · {timeAgo(comment.createdAt)} · <span className="font-medium">Resolved</span>
+                    {comment.authorName} · <TimeAgo date={comment.createdAt} /> · <span className="font-medium">Resolved</span>
                   </p>
                 </li>
               );

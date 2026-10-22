@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { AdForm } from "@/components/ad-form";
 import { PageHeader } from "@/components/page-header";
 import { EXAMPLE_ADS } from "@/lib/example-ads";
@@ -6,6 +7,8 @@ import { getRateSheet } from "@/lib/rate-sheet";
 import { getTeamRules } from "@/lib/team-rules";
 import { CHANNELS_FOR } from "@/lib/labels";
 import { requireRole } from "@/lib/session";
+
+export const metadata: Metadata = { title: "New ad" };
 
 function isoDate(daysFromToday: number) {
   const date = new Date();

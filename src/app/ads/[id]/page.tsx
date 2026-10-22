@@ -1,9 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { StatusBadge } from "@/components/badges";
+import { TimeAgo } from "@/components/time-ago";
 import { Button } from "@/components/ui/button";
 import type { Status } from "@/db/schema";
-import { decisionExpectation, formatDate, launchLabel, timeAgo } from "@/lib/format";
+import { decisionExpectation, formatDate, launchLabel } from "@/lib/format";
 import { getRule } from "@/lib/rules/catalog";
 import { CHANNEL_FIELDS, CHANNEL_LABELS, PRODUCT_LABELS, submissionRef } from "@/lib/labels";
 import { getOwnedAd } from "@/lib/queries";
@@ -20,6 +22,10 @@ const NEXT_STEP: Record<Status, string> = {
   approved: "Approved. This version is cleared to run as submitted.",
   rejected: "Rejected. This ad can't run. See the reviewer's notes below.",
 };
+
+export async function generateMetadata({ params }: PageProps<"/ads/[id]">): Promise<Metadata> {
+  return { title: submissionRef(Number((await params).id)) };
+}
 
 export default async function AdPage({ params, searchParams }: PageProps<"/ads/[id]">) {
   const identity = await requireRole(["marketer", "affiliate"]);
@@ -80,7 +86,7 @@ export default async function AdPage({ params, searchParams }: PageProps<"/ads/[
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="font-semibold">{ad.versions.length > 1 ? `Round ${version.number} copy` : "Copy"}</h2>
           <span className="text-sm text-muted-foreground">
-            {ad.status === "draft" ? "Saved" : "Sent"} {timeAgo(version.createdAt)}
+            {ad.status === "draft" ? "Saved" : "Sent"} <TimeAgo date={version.createdAt} />
           </span>
         </div>
         {fields.map((field) => (
@@ -107,7 +113,7 @@ export default async function AdPage({ params, searchParams }: PageProps<"/ads/[
                 )}
                 <p>{comment.body}</p>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  {comment.authorName} · {timeAgo(comment.createdAt)}
+                  {comment.authorName} · <TimeAgo date={comment.createdAt} />
                 </p>
               </li>
             ))}

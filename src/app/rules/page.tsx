@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SEVERITY_BADGE, Tag } from "@/components/badges";
 import { PageHeader } from "@/components/page-header";
+import { TimeAgo } from "@/components/time-ago";
 import { Button } from "@/components/ui/button";
-import { timeAgo } from "@/lib/format";
 import { CHANNEL_LABELS, PRODUCT_LABELS } from "@/lib/labels";
 import { isTeamRule, RULE_CATEGORIES, RULES, type RuleMeta } from "@/lib/rules/catalog";
 import { requireRole } from "@/lib/session";
@@ -134,7 +134,7 @@ function RuleCard({ rule, canEdit }: { rule: RuleMeta; canEdit: boolean }) {
           {"exampleOnly" in rule && rule.exampleOnly && <span>Example check, not verified against the regulation</span>}
           {team && (
             <span>
-              Added by {team.createdByName} {timeAgo(new Date(team.createdAt))}
+              Added by {team.createdByName} <TimeAgo date={new Date(team.createdAt)} />
             </span>
           )}
         </p>
