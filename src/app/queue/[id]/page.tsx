@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { RiskBadge, StatusBadge, Tag } from "@/components/badges";
+import { RiskBadge, RiskReasons, StatusBadge, Tag } from "@/components/badges";
 import { requestRateUpdate } from "@/app/queue/actions";
 import { ClaimOnOpen } from "@/components/claim-on-open";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { getReviewItem } from "@/lib/queries";
 import { getRateSheet } from "@/lib/rate-sheet";
 import { getRule } from "@/lib/rules/catalog";
 import { precheck } from "@/lib/rules/engine";
+import { riskBreakdown } from "@/lib/risk";
 import { requireRole } from "@/lib/session";
 import { getTeamRules } from "@/lib/team-rules";
 
@@ -53,6 +54,12 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/q
   const sinceSubmission = precheck({ product: item.product, channel: item.channel, fields: version.fields }, rateSheet, teamRules).filter(
     (finding) => !storedKeys.has(`${finding.ruleId}|${finding.matchText}`),
   );
+  const risk = riskBreakdown({
+    openFlagSeverities: version.flags.filter((flag) => flag.status !== "dismissed").map((flag) => flag.severity),
+    submitterType: item.submitterType,
+    product: item.product,
+    launchDate: item.launchDate,
+  });
   const submitter = item.partner ? `${item.submitterName}, ${item.partner.name}` : item.submitterName;
 
   return (
@@ -72,7 +79,7 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/q
         <div className="flex flex-wrap items-start justify-between gap-3">
           <h1 className="text-2xl font-semibold tracking-tight">{item.campaign}</h1>
           <div className="flex items-center gap-2">
-            {waitingForReview && <RiskBadge score={item.riskScore} />}
+            {waitingForReview && <RiskBadge score={risk.score} />}
             <StatusBadge status={item.status} />
           </div>
         </div>
@@ -95,6 +102,12 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/q
             </>
           )}
         </div>
+        {waitingForReview && (
+          <p className="text-sm">
+            <span className="font-medium">Why this risk level: </span>
+            <RiskReasons parts={risk.parts} className="inline text-sm" />
+          </p>
+        )}
         {!waitingForReview && (
           <p className="rounded-lg bg-muted/60 px-4 py-2.5 text-sm">
             {item.status === "draft"

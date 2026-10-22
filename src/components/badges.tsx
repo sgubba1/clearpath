@@ -66,3 +66,12 @@ export const SEVERITY_BADGE: Record<Severity, string> = {
   medium: "bg-amber-100 text-amber-900",
   low: "bg-sky-100 text-sky-900",
 };
+
+// Plain-language reasons behind a risk score, e.g. "5 high-severity flags +15 · Partner submission +2".
+export function RiskReasons({ parts, className }: { parts: { label: string; points: number }[]; className?: string }) {
+  return (
+    <span className={cn("block text-xs text-muted-foreground", className)}>
+      {parts.length === 0 ? "No open flags or risk factors" : parts.map((part) => `${part.label} +${part.points}`).join(" · ")}
+    </span>
+  );
+}

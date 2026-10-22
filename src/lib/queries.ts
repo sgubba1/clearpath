@@ -1,7 +1,8 @@
-import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { comments, partners, submissions, versions } from "@/db/schema";
+import { comments, flags, partners, submissions, versions } from "@/db/schema";
 import type { Identity } from "@/lib/identities";
+import { riskBreakdown } from "@/lib/risk";
 
 const submissionColumns = {
   id: submissions.id,
@@ -46,13 +47,37 @@ export async function getMyAds(identity: Identity) {
 }
 
 // Everything waiting on a reviewer, riskiest first, then longest waiting.
-export async function getQueue() {
-  return getDb()
+// Risk is recalculated on every load, so an ad climbs as its launch date nears, and each
+// item carries the reasons behind its score.
+export async function getQueue(now = new Date()) {
+  const db = getDb();
+  const items = await db
     .select(submissionColumns)
     .from(submissions)
     .leftJoin(partners, eq(submissions.partnerId, partners.id))
-    .where(inArray(submissions.status, ["submitted", "in_review"]))
-    .orderBy(desc(submissions.riskScore), asc(submissions.submittedAt));
+    .where(inArray(submissions.status, ["submitted", "in_review"]));
+  if (items.length === 0) return [];
+
+  // Unresolved flags on each item's current round.
+  const openFlags = await db
+    .select({ submissionId: versions.submissionId, severity: flags.severity })
+    .from(flags)
+    .innerJoin(versions, eq(flags.versionId, versions.id))
+    .innerJoin(submissions, and(eq(versions.submissionId, submissions.id), eq(versions.number, submissions.currentVersion)))
+    .where(and(inArray(versions.submissionId, items.map((item) => item.id)), ne(flags.status, "dismissed")));
+
+  return items
+    .map((item) => {
+      const risk = riskBreakdown({
+        openFlagSeverities: openFlags.filter((flag) => flag.submissionId === item.id).map((flag) => flag.severity),
+        submitterType: item.submitterType,
+        product: item.product,
+        launchDate: item.launchDate,
+        now,
+      });
+      return { ...item, riskScore: risk.score, riskParts: risk.parts };
+    })
+    .sort((a, b) => b.riskScore - a.riskScore || (a.submittedAt?.getTime() ?? 0) - (b.submittedAt?.getTime() ?? 0));
 }
 
 export async function getAllSubmissions() {

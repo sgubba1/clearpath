@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { RiskBadge, StatusBadge, Tag } from "@/components/badges";
+import { RiskBadge, RiskReasons, StatusBadge, Tag } from "@/components/badges";
 import { EmptyState, PageHeader } from "@/components/page-header";
 import { daysUntil, formatDate, hoursSince, launchLabel, waitingFor } from "@/lib/format";
 import { CHANNEL_LABELS, PRODUCT_LABELS, submissionRef } from "@/lib/labels";
@@ -27,7 +27,7 @@ export default async function QueuePage({ searchParams }: PageProps<"/queue">) {
         title="Review queue"
         description={
           queue.length
-            ? `${queue.length} ad${queue.length === 1 ? "" : "s"} waiting, riskiest first${overdue ? ` · ${overdue} past the ${REVIEW_TARGET_HOURS}-hour target` : ""}.`
+            ? `${queue.length} ad${queue.length === 1 ? "" : "s"} waiting, riskiest first${overdue ? ` · ${overdue} past the ${REVIEW_TARGET_HOURS}-hour target` : ""}. Risk adds up open flags (high 3, medium 2) plus partner, mortgage and launch-date factors.`
             : "Ads waiting for review, riskiest first."
         }
       />
@@ -62,6 +62,7 @@ export default async function QueuePage({ searchParams }: PageProps<"/queue">) {
                       {item.submitterType === "affiliate" && <Tag tone="partner">Affiliate</Tag>}
                       {item.currentVersion > 1 && <Tag>Round {item.currentVersion}</Tag>}
                     </div>
+                    <RiskReasons parts={item.riskParts} />
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-sm sm:justify-end">
                     <span className={isRush ? "font-medium text-foreground" : "text-muted-foreground"} title={formatDate(item.launchDate)}>

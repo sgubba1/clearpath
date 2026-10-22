@@ -8,22 +8,32 @@ const MORTGAGE_BUMP = 1;
 const RUSH_BUMP = 2;
 const RUSH_DAYS = 3;
 
-export function riskScore(input: {
+type RiskInput = {
   openFlagSeverities: Severity[];
   submitterType: "in_house" | "affiliate";
   product: Product;
   launchDate: string; // YYYY-MM-DD
   now?: Date;
-}): number {
-  const flagPoints = input.openFlagSeverities.reduce((sum, severity) => sum + SEVERITY_POINTS[severity], 0);
-  const daysToLaunch = (Date.parse(`${input.launchDate}T00:00:00`) - (input.now ?? new Date()).getTime()) / 86_400_000;
+};
 
-  return (
-    flagPoints +
-    (input.submitterType === "affiliate" ? AFFILIATE_BUMP : 0) +
-    (input.product === "mortgage_prequal" ? MORTGAGE_BUMP : 0) +
-    (daysToLaunch <= RUSH_DAYS ? RUSH_BUMP : 0)
-  );
+export type RiskPart = { label: string; points: number };
+
+// The score and the reasons behind it, so the queue order is never a black box.
+export function riskBreakdown(input: RiskInput): { score: number; parts: RiskPart[] } {
+  const parts: RiskPart[] = [];
+  for (const severity of ["high", "medium", "low"] as const) {
+    const count = input.openFlagSeverities.filter((value) => value === severity).length;
+    if (count) parts.push({ label: `${count} ${severity}-severity flag${count === 1 ? "" : "s"}`, points: count * SEVERITY_POINTS[severity] });
+  }
+  if (input.submitterType === "affiliate") parts.push({ label: "Partner submission", points: AFFILIATE_BUMP });
+  if (input.product === "mortgage_prequal") parts.push({ label: "Mortgage", points: MORTGAGE_BUMP });
+  const daysToLaunch = (Date.parse(`${input.launchDate}T00:00:00`) - (input.now ?? new Date()).getTime()) / 86_400_000;
+  if (daysToLaunch <= RUSH_DAYS) parts.push({ label: daysToLaunch < 0 ? "Already live" : "Launches within 3 days", points: RUSH_BUMP });
+  return { score: parts.reduce((sum, part) => sum + part.points, 0), parts };
+}
+
+export function riskScore(input: RiskInput): number {
+  return riskBreakdown(input).score;
 }
 
 export type RiskLevel = "high" | "medium" | "low";
