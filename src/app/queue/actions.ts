@@ -121,7 +121,9 @@ export async function decide(_prev: DecisionState, formData: FormData): Promise<
         id,
         version.number,
         outcome.action,
-        decision === "approve" && openFlags.length ? `Approved with ${openFlags.length} flag${openFlags.length === 1 ? "" : "s"} judged acceptable` : undefined,
+        decision === "approve" && openFlags.length
+          ? `${openFlags.length} flagged phrase${openFlags.length === 1 ? "" : "s"} judged acceptable`
+          : undefined,
       ),
     ]);
   });

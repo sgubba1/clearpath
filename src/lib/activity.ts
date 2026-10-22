@@ -23,7 +23,7 @@ export function describeEvent(event: Event): string {
     case "changes_requested":
       return `${who} asked for changes on${round}`;
     case "approved":
-      return `${who} approved${round}${event.detail ? ` (${event.detail.toLowerCase()})` : ""}`;
+      return `${who} approved${round}${event.detail ? `, with ${event.detail.replace(/^Approved with /i, "").replace(/ flags? judged/, (m) => m.replace("flag", "flagged phrase"))}` : ""}`;
     case "rejected":
       return `${who} rejected${round}`;
     case "rule_added":
