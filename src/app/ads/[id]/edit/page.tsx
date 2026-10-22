@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { AdForm } from "@/components/ad-form";
 import { PageHeader } from "@/components/page-header";
+import { getRateSheet } from "@/lib/rate-sheet";
 import { CHANNELS_FOR, submissionRef } from "@/lib/labels";
 import { getOwnedAd } from "@/lib/queries";
 import { requireRole } from "@/lib/session";
@@ -16,9 +17,10 @@ export default async function EditDraftPage({ params }: PageProps<"/ads/[id]/edi
   const version = ad.versions[0];
 
   return (
-    <main className="mx-auto w-full max-w-3xl space-y-6 px-4 py-8 sm:px-6">
+    <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 sm:px-6">
       <PageHeader title="Edit draft" description={`${submissionRef(ad.id)} · Not sent to compliance yet.`} />
       <AdForm
+        rateSheet={await getRateSheet()}
         draftId={ad.id}
         channels={CHANNELS_FOR[isAffiliate ? "affiliate" : "in_house"]}
         submitterLabel={isAffiliate ? `${identity.name}, ${identity.organization}` : identity.name}

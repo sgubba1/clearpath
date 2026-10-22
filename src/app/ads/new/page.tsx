@@ -1,5 +1,6 @@
 import { AdForm } from "@/components/ad-form";
 import { PageHeader } from "@/components/page-header";
+import { getRateSheet } from "@/lib/rate-sheet";
 import { CHANNELS_FOR } from "@/lib/labels";
 import { requireRole } from "@/lib/session";
 
@@ -15,12 +16,13 @@ export default async function NewAdPage() {
   const channels = CHANNELS_FOR[isAffiliate ? "affiliate" : "in_house"];
 
   return (
-    <main className="mx-auto w-full max-w-3xl space-y-6 px-4 py-8 sm:px-6">
+    <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 sm:px-6">
       <PageHeader
         title={isAffiliate ? "Submit a placement" : "New ad"}
         description="Fill in the details and paste your copy exactly as people will see it."
       />
       <AdForm
+        rateSheet={await getRateSheet()}
         channels={channels}
         submitterLabel={isAffiliate ? `${identity.name}, ${identity.organization}` : identity.name}
         minLaunchDate={isoDate(0)}
