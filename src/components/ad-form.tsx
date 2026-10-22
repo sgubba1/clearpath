@@ -32,9 +32,13 @@ type Props = {
   rateSheet: RateSheet;
   // Ready-made ads evaluators can load instead of writing copy (new ads only).
   examples?: ExampleAd[];
+  // Set when revising an ad compliance sent back: the round being written and the feedback to address.
+  revision?: { round: number; feedback: RevisionFeedback[]; cancelHref: string };
 };
 
-export function AdForm({ draftId, initial, channels, submitterLabel, minLaunchDate, rateSheet, examples = [] }: Props) {
+export type RevisionFeedback = { id: number; author: string; body: string; about?: string; quote?: string };
+
+export function AdForm({ draftId, initial, channels, submitterLabel, minLaunchDate, rateSheet, examples = [], revision }: Props) {
   const [state, formAction, pending] = useActionState<AdFormState, FormData>(saveAd, { errors: {} });
   // Controlled values survive validation errors and let the pre-check apply rewrites.
   const [values, setValues] = useState<AdFormValues>(initial);
@@ -43,6 +47,7 @@ export function AdForm({ draftId, initial, channels, submitterLabel, minLaunchDa
   const [recentlyFixed, setRecentlyFixed] = useState<{ title: string }>();
   const [confirming, setConfirming] = useState(false);
   const [reason, setReason] = useState("");
+  const [changeNote, setChangeNote] = useState("");
   const inputs = useRef(new Map<string, HTMLTextAreaElement>());
   const reasonRef = useRef<HTMLTextAreaElement>(null);
 
@@ -182,36 +187,71 @@ export function AdForm({ draftId, initial, channels, submitterLabel, minLaunchDa
             </Field>
           </div>
 
-          <ChoiceGroup
-            legend="Product"
-            name="product"
-            error={errors.product}
-            value={values.product}
-            onChange={(product) => set({ product: product as Product })}
-            options={(Object.keys(PRODUCT_LABELS) as Product[]).map((product) => ({
-              value: product,
-              label: PRODUCT_LABELS[product],
-              hint: PRODUCT_HINTS[product],
-            }))}
-          />
-
-          {channels.length > 1 ? (
-            <ChoiceGroup
-              legend="Where will it run?"
-              name="channel"
-              error={errors.channel}
-              value={values.channel}
-              onChange={(channel) => set({ channel: channel as Channel })}
-              options={channels.map((channel) => ({ value: channel, label: CHANNEL_LABELS[channel], hint: CHANNEL_HINTS[channel] }))}
-            />
+          {revision ? (
+            <p className="text-sm">
+              <span className="text-muted-foreground">Product and channel: </span>
+              <span className="font-medium">
+                {values.product && PRODUCT_LABELS[values.product]} · {values.channel && CHANNEL_LABELS[values.channel]}
+              </span>
+              <input type="hidden" name="product" value={values.product} />
+              <input type="hidden" name="channel" value={values.channel} />
+            </p>
           ) : (
-            <input type="hidden" name="channel" value={channels[0]} />
+            <>
+              <ChoiceGroup
+                legend="Product"
+                name="product"
+                error={errors.product}
+                value={values.product}
+                onChange={(product) => set({ product: product as Product })}
+                options={(Object.keys(PRODUCT_LABELS) as Product[]).map((product) => ({
+                  value: product,
+                  label: PRODUCT_LABELS[product],
+                  hint: PRODUCT_HINTS[product],
+                }))}
+              />
+
+              {channels.length > 1 ? (
+                <ChoiceGroup
+                  legend="Where will it run?"
+                  name="channel"
+                  error={errors.channel}
+                  value={values.channel}
+                  onChange={(channel) => set({ channel: channel as Channel })}
+                  options={channels.map((channel) => ({ value: channel, label: CHANNEL_LABELS[channel], hint: CHANNEL_HINTS[channel] }))}
+                />
+              ) : (
+                <input type="hidden" name="channel" value={channels[0]} />
+              )}
+            </>
           )}
 
           <p className="text-sm text-muted-foreground">
             Submitting as <span className="font-medium text-foreground">{submitterLabel}</span>
           </p>
         </Section>
+
+        {revision && revision.feedback.length > 0 && (
+          <section aria-labelledby="feedback-title" className="space-y-3 rounded-xl border border-amber-300 bg-amber-50 p-5">
+            <h2 id="feedback-title" className="font-semibold text-amber-950">
+              What compliance asked you to change
+            </h2>
+            <ul className="space-y-2">
+              {revision.feedback.map((item) => (
+                <li key={item.id} className="rounded-lg bg-background p-3 text-sm">
+                  {item.about && (
+                    <p className="mb-1 font-medium text-amber-900">
+                      {item.about}
+                      {item.quote && <span className="font-normal"> · &ldquo;{item.quote}&rdquo;</span>}
+                    </p>
+                  )}
+                  <p>{item.body}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{item.author}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {values.channel ? (
           <Section title={channels.length > 1 ? `${CHANNEL_LABELS[values.channel]} copy` : "Your placement"}>
@@ -292,21 +332,41 @@ export function AdForm({ draftId, initial, channels, submitterLabel, minLaunchDa
           </div>
         )}
 
+        {revision && (
+          <div className="space-y-1.5 rounded-xl border bg-card p-5">
+            <Label htmlFor="changeNote">What did you change? (optional)</Label>
+            <Textarea
+              id="changeNote"
+              name="changeNote"
+              rows={2}
+              value={changeNote}
+              onChange={(e) => setChangeNote(e.target.value)}
+              placeholder="e.g. Added the intro period and ongoing APR, and switched to “See if you prequalify.”"
+              aria-describedby="changeNote-help"
+            />
+            <p id="changeNote-help" className="text-sm text-muted-foreground">
+              The reviewer sees this above the changes, so round {revision.round} goes faster.
+            </p>
+          </div>
+        )}
+
         <div className="flex flex-col-reverse gap-3 border-t pt-6 sm:flex-row sm:items-center sm:justify-end">
           <Button variant="ghost" asChild>
-            <Link href="/ads">Cancel</Link>
+            <Link href={revision?.cancelHref ?? "/ads"}>Cancel</Link>
           </Button>
-          <Button type="submit" name="intent" value="draft" variant="outline" disabled={pending}>
-            Save draft
-          </Button>
+          {!revision && (
+            <Button type="submit" name="intent" value="draft" variant="outline" disabled={pending}>
+              Save draft
+            </Button>
+          )}
           {openIssues > 0 && !confirming ? (
             // Sending with open issues takes one extra step: say why.
             <Button type="button" onClick={() => setConfirming(true)} disabled={pending}>
-              Submit for review
+              {revision ? `Resubmit as round ${revision.round}` : "Submit for review"}
             </Button>
           ) : (
             <Button type="submit" name="intent" value="submit" disabled={pending || (confirming && openIssues > 0 && !reason.trim())}>
-              {pending ? "Sending…" : confirming && openIssues > 0 ? "Send with open issues" : "Submit for review"}
+              {pending ? "Sending…" : confirming && openIssues > 0 ? "Send with open issues" : revision ? `Resubmit as round ${revision.round}` : "Submit for review"}
             </Button>
           )}
         </div>

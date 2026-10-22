@@ -14,7 +14,7 @@ const NEXT_STEP: Record<Status, string> = {
   draft: "This draft hasn't been sent yet. Only you can see it.",
   submitted: "Compliance has it. Most ads get a decision within two days, and any feedback will show up here.",
   in_review: "A reviewer is looking at it now.",
-  changes_requested: "Compliance asked for changes. See their notes below.",
+  changes_requested: "Compliance asked for changes. Their notes are below; revise the ad and resubmit when ready.",
   approved: "Approved. This version is cleared to run as submitted.",
   rejected: "Rejected. This ad can't run. See the reviewer's notes below.",
 };
@@ -54,6 +54,11 @@ export default async function AdPage({ params, searchParams }: PageProps<"/ads/[
         {ad.status === "draft" && (
           <Button asChild>
             <Link href={`/ads/${ad.id}/edit`}>Continue editing</Link>
+          </Button>
+        )}
+        {ad.status === "changes_requested" && (
+          <Button asChild>
+            <Link href={`/ads/${ad.id}/edit`}>Revise and resubmit</Link>
           </Button>
         )}
       </header>
