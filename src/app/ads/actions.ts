@@ -38,7 +38,15 @@ export async function saveAd(_prev: AdFormState, formData: FormData): Promise<Ad
   const values = readValues(formData);
   const submitterType = identity.role === "affiliate" ? "affiliate" : "in_house";
 
-  const errors = validate(values, intent, submitterType);
+  // An ad that's already running keeps its original launch date when it's revised.
+  const keepsPastLaunch = draftId
+    ? await getDb()
+        .select({ launchDate: submissions.launchDate, status: submissions.status })
+        .from(submissions)
+        .where(and(eq(submissions.id, draftId), ownerFilter(identity)))
+        .then(([row]) => row?.status === "changes_requested" && row.launchDate === values.launchDate)
+    : false;
+  const errors = validate(values, intent, submitterType, keepsPastLaunch);
   if (Object.keys(errors).length) {
     return { errors, message: "Some fields need attention before this can be sent." };
   }
@@ -209,7 +217,7 @@ function readValues(formData: FormData): AdFormValues {
 }
 
 // Errors are keyed by input name so the form can show each one next to its field.
-function validate(values: AdFormValues, intent: "draft" | "submit", submitterType: "in_house" | "affiliate") {
+function validate(values: AdFormValues, intent: "draft" | "submit", submitterType: "in_house" | "affiliate", keepsPastLaunch = false) {
   const errors: Record<string, string> = {};
 
   if (!values.campaign.trim()) errors.campaign = "Give the campaign a name so you can find it later.";
@@ -217,7 +225,7 @@ function validate(values: AdFormValues, intent: "draft" | "submit", submitterTyp
   if (!values.channel) errors.channel = "Choose where this ad will run.";
   else if (!CHANNELS_FOR[submitterType].includes(values.channel)) errors.channel = "This channel isn't available for your account.";
   if (!values.launchDate) errors.launchDate = "Add the date this ad goes live.";
-  else if (daysUntil(values.launchDate) < 0) errors.launchDate = "The launch date can't be in the past.";
+  else if (daysUntil(values.launchDate) < 0 && !keepsPastLaunch) errors.launchDate = "The launch date can't be in the past.";
 
   if (intent === "draft" || !values.channel) return errors;
 

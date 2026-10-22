@@ -46,7 +46,8 @@ export default async function EditAdPage({ params }: PageProps<"/ads/[id]/edit">
         draftId={ad.id}
         channels={CHANNELS_FOR[isAffiliate ? "affiliate" : "in_house"]}
         submitterLabel={isAffiliate ? `${identity.name}, ${identity.organization}` : identity.name}
-        minLaunchDate={new Date().toLocaleDateString("en-CA")}
+        // A running ad being revised can keep its original (past) launch date.
+        minLaunchDate={[new Date().toLocaleDateString("en-CA"), ad.launchDate].sort()[0]}
         revision={isRevision ? { round, feedback, cancelHref: `/ads/${ad.id}` } : undefined}
         initial={{
           product: ad.product,
