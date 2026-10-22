@@ -12,6 +12,11 @@ export type RateTerms = {
   termMaxMonths: number | null;
   introAprMonths: number | null;
   nmlsId: string | null;
+  autopayDiscount: number | null;
+  originationFeeMin: number | null;
+  originationFeeMax: number | null;
+  ratesAsOf: string | null;
+  rateAssumptions: string | null;
 };
 export type RateSheet = Record<Product, RateTerms>;
 
@@ -25,8 +30,10 @@ export type Finding = {
   matchText: string;
   // Specific explanation for this instance, e.g. which rate is off and by how much.
   detail?: string;
-  // A compliant replacement for [start, replaceEnd ?? end). For missing items this is text to append.
+  // A compliant replacement for [replaceStart ?? start, replaceEnd ?? end). For missing items this is text to append.
   replacement?: string;
+  // Set when the fix rewrites more than the highlight, e.g. the whole sentence.
+  replaceStart?: number;
   // Set when the fix needs to rewrite past the highlight, e.g. adding the APR at the end of the sentence.
   replaceEnd?: number;
 };
@@ -98,7 +105,7 @@ const APPROVAL_PHRASES: PhraseList = [
   [/\bguaranteed approval\b|\bapproval guaranteed\b|\bguaranteed to be approved\b|\binstant approval\b/, "fast decisions"],
 ];
 
-const CREDIT_CHECK_PHRASES: PhraseList = [
+const NO_CREDIT_CHECK_PHRASES: PhraseList = [
   [/\b(?:we )?(?:never|don(?:'|’)t|do not) check (?:your )?credit\b/, "we use a soft credit check to show your rate"],
   [/\bwithout a credit check\b/, "with a soft credit check to see your rate"],
   [
@@ -118,6 +125,29 @@ const LENDER_PHRASES: PhraseList = [
   [/\bour (?:loans?|rates?)\b/, null],
 ];
 
+const CREDIT_IMPACT = /\b(?:no|zero|without any|without) (?:impact|effect) (?:on|to) your credit(?: score)?\b|\bwon(?:'|’)t (?:affect|hurt|impact|ding) your credit(?: score)?\b/i;
+// "as low as 8.99% APR", "starting at 8.99% APR", "from 8.99% APR" (but not "from 8.99% to 35.99%").
+const TEASER_RATE = /\b(?:as low as|starting at|starts at|from|low)\s+(\d{1,2}(?:\.\d{1,2})?)%(?!\s?(?:-|–|to)\s?\d)\s?APR\b/i;
+const FEE_CLAIM = /\bno (?:hidden |upfront |origination |surprise )?fees?\b|\bfee-free\b|\bzero fees\b|\bwithout (?:any )?fees\b/;
+const FUNDING_SPEED = /\b(?:as soon as (?:today|tomorrow|the next (?:business )?day)|same[- ]day|next[- ]day|overnight|within 24 hours|in 24 hours|by tomorrow)\b(?: funding)?/i;
+const TERMS_OFF_AD = /\b(?:terms|rates|details|disclosures?)(?: are)? (?:in|at) (?:(?:our|the) )?(?:bio|link|site|website)\b|\bsee (?:the )?(?:link|bio|site|website) for (?:terms|details|rates|disclosures)\b|\blink in bio\b/;
+// "Best rates guaranteed" is left to the affiliate rule so one phrase isn't flagged twice.
+const RANKING = /#1\b|\bnumber one\b|\bbest (?:personal loans?|lenders?|cards?|credit cards?|mortgages?|rates?)\b(?![^.!?]{0,30}\bguaranteed\b)|\btop[- ]rated\b|\bAmerica(?:'|’)s (?:favorite|best|top)\b/;
+
+function sentenceAround(text: string, index: number) {
+  const before = text.slice(0, index);
+  let start = Math.max(before.search(/[^.!?]*$/), 0);
+  while (/\s/.test(text[start] ?? "") && start < index) start++;
+  const after = text.slice(index).search(/[.!?](?:\s|$)/);
+  const end = after < 0 ? text.length : index + after + 1;
+  return { start, end, text: text.slice(start, end) };
+}
+
+function formatAsOf(isoDate: string) {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
 // Matches "$199/month", "$199 per month", "$1,200 monthly".
 const PAYMENT = /\$\s?\d[\d,]*(?:\.\d{2})?\s?(?:\/\s?mo(?:nth)?\b|per month\b|a month\b|monthly\b)/i;
 // Matches "60 months", "30-year", "24-60 month".
@@ -131,7 +161,103 @@ const ONGOING_APR = /(?<!0)\b(?:[1-9]\d?(?:\.\d{1,2})?)%(?:\s?(?:-|–|to)\s?\d{
 const DETECTORS: Record<RuleId, Detector> = {
   "guaranteed-approval": phraseList(APPROVAL_PHRASES),
 
-  "no-credit-check": phraseList(CREDIT_CHECK_PHRASES),
+  "credit-impact": (ctx) => [
+    ...phraseList(NO_CREDIT_CHECK_PHRASES)(ctx),
+    // "No impact to your credit" is fine about checking a rate, not about applying.
+    ...copyFields(ctx).flatMap(({ key, text }) =>
+      [...matches(text, CREDIT_IMPACT)].flatMap(({ index, text: found }) => {
+        const sentence = sentenceAround(text, index);
+        if (!/\bappl(?:y|ying|ication)\b/i.test(sentence.text)) return [];
+        return [
+          {
+            field: key,
+            start: index,
+            end: index + found.length,
+            matchText: found,
+            replacement: "Checking your rate won't affect your credit score. If you apply, we'll do a hard credit inquiry.",
+            replaceStart: sentence.start,
+            replaceEnd: sentence.end,
+          },
+        ];
+      }),
+    ),
+  ],
+
+  "lowest-rate-conditions": (ctx) => {
+    const r = ctx.rates;
+    if (!r.autopayDiscount || /\bauto-?pay\b|automatic payments?/i.test(ctx.allText)) return [];
+    return copyFields(ctx).flatMap(({ key, text }) =>
+      [...matches(text, TEASER_RATE)].flatMap(({ index, text: found, groups }) => {
+        // Only the real lowest rate; a rate below the sheet is the rate rule's problem.
+        if (Math.abs(Number(groups[1]) - r.aprMin) > 0.001) return [];
+        return [{ field: key, start: index, end: index + found.length, matchText: found, replacement: `${found} with autopay` }];
+      }),
+    );
+  },
+
+  "fee-claim": (ctx) => {
+    const r = ctx.rates;
+    const detail =
+      ctx.product === "personal_loan" && r.originationFeeMax
+        ? `ClearPath charges an origination fee of ${r.originationFeeMin ?? 0}%–${r.originationFeeMax}% on personal loans.`
+        : "Mortgages carry closing costs and other fees.";
+    return phraseList([[FEE_CLAIM, ctx.product === "personal_loan" ? "no prepayment penalty" : null]])(ctx).map((finding) => ({ ...finding, detail }));
+  },
+
+  "funding-speed": (ctx) =>
+    copyFields(ctx).flatMap(({ key, text }) =>
+      [...matches(text, FUNDING_SPEED)].flatMap(({ index, text: found }) => {
+        if (/\b(?:if|after|once|upon) approv/i.test(sentenceAround(text, index).text)) return [];
+        return [{ field: key, start: index, end: index + found.length, matchText: found, replacement: "as soon as the next business day after approval" }];
+      }),
+    ),
+
+  "savings-claim": phraseList([
+    [
+      /\bsave (?:up to |over |more than )?\$[\d,]+(?:\s(?:on|in) interest)?/,
+      // Without the example behind it, the safe fix drops the number.
+      ({ atSentenceStart }) => (atSentenceStart ? "consolidating could lower what you pay in interest" : "could lower what you pay in interest"),
+    ],
+  ]),
+
+  "terms-off-ad": phraseList([[TERMS_OFF_AD, null]]),
+
+  "mortgage-rate-basis": (ctx) => {
+    if (/\bas of\b|\brates? (?:effective|accurate)\b/i.test(ctx.allText)) return [];
+    const r = ctx.rates;
+    const asOf = r.ratesAsOf ? formatAsOf(r.ratesAsOf) : "today";
+    const basis = `rate as of ${asOf}${r.rateAssumptions ? `; assumes ${r.rateAssumptions}` : ""}`;
+    return copyFields(ctx).flatMap(({ key, text }) =>
+      [...matches(text, RATE)].map(({ index, text: found }) => {
+        // The basis goes at the end of the sentence so it doesn't split the offer.
+        const replaceEnd = index + found.length + text.slice(index + found.length).search(/[.!?](?:\s|$)|$/);
+        return {
+          field: key,
+          start: index,
+          end: index + found.length,
+          matchText: found,
+          replacement: `${text.slice(index, replaceEnd)} (${basis})`,
+          replaceEnd,
+        };
+      }),
+    );
+  },
+
+  "ranking-claim": phraseList([[RANKING, null]]),
+
+  "affiliate-disclosure": (ctx) => {
+    if (/compensat|paid (?:for|by)|advertis(?:er|ing) disclosure|\bsponsored\b|\bpaid partner|may (?:be paid|earn)/i.test(ctx.allText)) return [];
+    const text = ctx.fields[ctx.mainField] ?? "";
+    return [
+      {
+        field: ctx.mainField,
+        start: text.length,
+        end: text.length,
+        matchText: "",
+        replacement: `${spacer(text)}We may be compensated when you apply through our links.`,
+      },
+    ];
+  },
 
   "closed-end-trigger-terms": (ctx) => {
     if (APR_MENTION.test(ctx.allText)) return [];
@@ -289,5 +415,6 @@ export function precheck(input: AdInput, rateSheet: RateSheet): Finding[] {
 export function applyFix(fields: Record<string, string>, finding: Finding): Record<string, string> {
   if (finding.replacement === undefined) return fields;
   const text = fields[finding.field] ?? "";
-  return { ...fields, [finding.field]: text.slice(0, finding.start) + finding.replacement + text.slice(finding.replaceEnd ?? finding.end) };
+  const from = finding.replaceStart ?? finding.start;
+  return { ...fields, [finding.field]: text.slice(0, from) + finding.replacement + text.slice(finding.replaceEnd ?? finding.end) };
 }

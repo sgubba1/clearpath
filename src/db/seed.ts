@@ -9,6 +9,7 @@ import { riskScore } from "@/lib/risk";
 import {
   CLEAN_COPY,
   COPY_WITHOUT_TERMS,
+  PARTNER_DISCLOSURE,
   FOOTER,
   HISTORY,
   PEOPLE,
@@ -95,7 +96,8 @@ function planSubmission(item: SeedSubmission, ago: (hours: number) => Date, inDa
   const launchDate = inDays(item.launchInDays);
 
   // Flags come from the real pre-check, so the demo always matches what the rules catch.
-  const findingsFor = (version: SeedVersion) => precheck({ product: item.product, channel: item.channel, fields: version.fields }, RATES);
+  const findingsFor = (version: SeedVersion) =>
+    item.approvedUnderOldRates ? [] : precheck({ product: item.product, channel: item.channel, fields: version.fields }, RATES);
   const score = riskScore({
     openFlagSeverities: findingsFor(latest).map((finding) => finding.severity),
     submitterType: submitter.role === "affiliate" ? "affiliate" : "in_house",
@@ -271,7 +273,7 @@ function fieldsFor(channel: Channel, product: Product, submitter: PersonKey, cop
     case "social":
       return { platform: "Facebook", postCopy: text, link: "https://clearpath.example.com/offers" };
     case "affiliate":
-      return { placementUrl: `https://${submitter}.example.com/clearpath`, copy: text };
+      return { placementUrl: `https://${submitter}.example.com/clearpath`, copy: `${text} ${PARTNER_DISCLOSURE}` };
     case "landing_page":
       return { url: "https://clearpath.example.com/offers", copy: text };
     case "paid_search":

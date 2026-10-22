@@ -1,5 +1,11 @@
 import type { partners, rateSheet } from "@/db/schema";
 
+// Mortgage rates are quoted "as of" a recent date; two days before the seed runs.
+export function ratesAsOfDate(now = new Date()) {
+  const date = new Date(now.getTime() - 2 * 24 * 3_600_000);
+  return date.toISOString().slice(0, 10);
+}
+
 // Fictional reference data. The seed loads these into the database.
 
 export const RATE_SHEET: (typeof rateSheet.$inferInsert)[] = [
@@ -9,7 +15,10 @@ export const RATE_SHEET: (typeof rateSheet.$inferInsert)[] = [
     aprMax: 35.99,
     termMinMonths: 24,
     termMaxMonths: 60,
-    notes: "Fixed rate. APR depends on credit, income and loan amount.",
+    autopayDiscount: 0.5,
+    originationFeeMin: 0,
+    originationFeeMax: 8,
+    notes: "Fixed rate. Lowest APR includes a 0.50% autopay discount. Origination fee 0%–8% of the loan amount. Funds as soon as the next business day after approval.",
   },
   {
     product: "credit_card",
@@ -26,7 +35,9 @@ export const RATE_SHEET: (typeof rateSheet.$inferInsert)[] = [
     termMinMonths: 180,
     termMaxMonths: 360,
     nmlsId: "2045817",
-    notes: "Rates may be shown only with the APR and NMLS ID. Prequalification is not a commitment to lend.",
+    ratesAsOf: ratesAsOfDate(),
+    rateAssumptions: "740 credit score, 20% down, 30-year fixed, no points",
+    notes: "Rates may be shown only with the APR, the date, the assumptions and the NMLS ID. Prequalification is not a commitment to lend.",
   },
 ];
 

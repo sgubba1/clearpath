@@ -1,17 +1,17 @@
 import type { AdInput } from "./engine";
 import type { RuleId } from "./catalog";
+import { EXAMPLE_ADS } from "@/lib/example-ads";
 
 // Known ads with the flags they should get. `npm run test:rules` runs these before each deploy,
 // including clean ads that must stay clean so false positives get caught too.
 
 export type TestAd = AdInput & { name: string; expected: RuleId[]; fixesShouldClear?: boolean };
 
+// Partner copy must disclose the paid relationship; tests add it so each one isolates its own rule.
+const DISCLOSURE = " We may be compensated when you apply through our links.";
+
 const FOOTER =
   "Unsubscribe: clearpath.example.com/unsubscribe · ClearPath Financial, 100 Example Way, Suite 400, Columbus, OH 43215";
-
-// The ad used in the demo: an affiliate pastes it, sees five flags, applies the fixes.
-export const DEMO_AFFILIATE_COPY =
-  "Guaranteed approval with no credit check! Borrow $5,000 for just $199/month. We are the lender that says yes. Best rates guaranteed, apply today.";
 
 
 // Different wordings of the same claims, so the rules are tested beyond the demo sentence.
@@ -19,18 +19,18 @@ const affiliate = (name: string, copy: string, expected: RuleId[], fixesShouldCl
   name,
   product: "personal_loan",
   channel: "affiliate",
-  fields: { placementUrl: "https://brightpath-rates.example.com/loans", copy },
+  fields: { placementUrl: "https://brightpath-rates.example.com/loans", copy: copy + DISCLOSURE },
   expected,
   fixesShouldClear,
 });
 
 const VARIANTS: TestAd[] = [
   affiliate("Variant: approval guaranteed", "Approval guaranteed, even with bad credit!", ["guaranteed-approval"]),
-  affiliate("Variant: everyone gets approved", "Everyone gets approved. No credit check needed.", ["guaranteed-approval", "no-credit-check"]),
+  affiliate("Variant: everyone gets approved", "Everyone gets approved. No credit check needed.", ["guaranteed-approval", "credit-impact"]),
   affiliate("Variant: 100% approval", "100% approval rate for all applicants.", ["guaranteed-approval"]),
   affiliate("Variant: approved no matter what", "Get approved no matter what your credit looks like.", ["guaranteed-approval"]),
   affiliate("Variant: basically approved", "Bad credit? No problem. You're basically approved already.", ["guaranteed-approval"]),
-  affiliate("Variant: never check credit", "We never check your credit.", ["no-credit-check"]),
+  affiliate("Variant: never check credit", "We never check your credit.", ["credit-impact"]),
   affiliate("Variant: payment a month", "Only $250 a month for 48 months.", ["closed-end-trigger-terms"]),
   affiliate("Variant: payment monthly", "Pay as little as $150 monthly.", ["closed-end-trigger-terms"]),
   affiliate("Variant: rate starting at", "Rates starting at 5.99% APR.", ["rate-not-offered"]),
@@ -43,15 +43,22 @@ const VARIANTS: TestAd[] = [
   affiliate("Clean: comparison wording", "Compare personal loan offers from ClearPath Financial and see if you prequalify.", []),
 ];
 
+
+// Rules with no safe automatic rewrite; ads hitting them can't be fully fixed by clicking.
+const NO_AUTOFIX: RuleId[] = ["terms-off-ad", "ranking-claim"];
+
+// Every example in the form's "Try an example" menu is tested too.
+const EXAMPLES: TestAd[] = EXAMPLE_ADS.map((example) => ({
+  name: `Example: ${example.label}`,
+  product: example.product,
+  channel: example.channel,
+  fields: example.fields,
+  expected: example.expected,
+  fixesShouldClear: !example.expected.some((rule) => NO_AUTOFIX.includes(rule)),
+}));
+
 export const TEST_ADS: TestAd[] = [
-  {
-    name: "Demo affiliate ad",
-    product: "personal_loan",
-    channel: "affiliate",
-    fields: { placementUrl: "https://brightpath-rates.example.com/loans", copy: DEMO_AFFILIATE_COPY },
-    expected: ["guaranteed-approval", "no-credit-check", "closed-end-trigger-terms", "affiliate-implies-lender", "affiliate-implies-lender"],
-    fixesShouldClear: true,
-  },
+  ...EXAMPLES,
   {
     name: "Compliant affiliate copy naming ClearPath as lender",
     product: "personal_loan",
@@ -74,7 +81,7 @@ export const TEST_ADS: TestAd[] = [
     name: "Rate below the rate sheet",
     product: "personal_loan",
     channel: "affiliate",
-    fields: { placementUrl: "https://cardcompass.example.com/review", copy: "ClearPath personal loans with rates as low as 4.99% APR." },
+    fields: { placementUrl: "https://cardcompass.example.com/review", copy: "ClearPath personal loans with rates as low as 4.99% APR." + DISCLOSURE },
     expected: ["rate-not-offered"],
     fixesShouldClear: true,
   },
@@ -165,7 +172,7 @@ export const TEST_ADS: TestAd[] = [
     name: "Mortgage post without NMLS ID",
     product: "mortgage_prequal",
     channel: "social",
-    fields: { platform: "Facebook", postCopy: "See if you prequalify for a home loan in minutes. Rates from 6.42% APR." },
+    fields: { platform: "Facebook", postCopy: "See if you prequalify for a home loan in minutes. Rates from 6.42% APR as of Oct 20, 2026, assuming a 740 credit score and 20% down." },
     expected: ["missing-nmls"],
     fixesShouldClear: true,
   },
@@ -181,7 +188,7 @@ export const TEST_ADS: TestAd[] = [
     name: "Clean mortgage search ad",
     product: "mortgage_prequal",
     channel: "paid_search",
-    fields: { url: "https://clearpath.example.com/mortgage", copy: "Prequalify for a Home Loan | Rates From 6.42% APR | ClearPath Financial, NMLS ID #2045817." },
+    fields: { url: "https://clearpath.example.com/mortgage", copy: "Prequalify for a Home Loan | Rates From 6.42% APR as of Oct 20, 2026 | ClearPath Financial, NMLS ID #2045817." },
     expected: [],
   },
   {
@@ -189,6 +196,24 @@ export const TEST_ADS: TestAd[] = [
     product: "personal_loan",
     channel: "email",
     fields: { subject: "Check your rate", body: "Checking your rate won't affect your credit score. 8.99%–35.99% APR.", footer: FOOTER },
+    expected: [],
+  },
+  {
+    name: "Clean: conditions stated for rate, funding, savings and credit",
+    product: "personal_loan",
+    channel: "email",
+    fields: {
+      subject: "One payment instead of five",
+      body: "Rates as low as 8.99% APR with autopay. Checking your rate won't affect your credit score. Funds as soon as the next business day after approval. Consolidating could lower what you pay in interest.",
+      footer: FOOTER,
+    },
+    expected: [],
+  },
+  {
+    name: "Clean: card with no annual fee",
+    product: "credit_card",
+    channel: "social",
+    fields: { platform: "Instagram", postCopy: "2% cash back on everything and no annual fee with the ClearPath Cash Back Card." },
     expected: [],
   },
   ...VARIANTS,

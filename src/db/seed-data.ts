@@ -1,5 +1,6 @@
 import type { Channel, Product, Status } from "@/db/schema";
 import type { RuleId } from "@/lib/rules/catalog";
+import { ratesAsOfDate } from "@/lib/reference-data";
 
 // Demo data. Everything here is fictional: people, partners, URLs, NMLS IDs and addresses.
 // Times are relative to when the seed runs, so the demo always looks current.
@@ -52,6 +53,8 @@ export type SeedSubmission = {
   launchInDays: number;
   submitter: SubmitterKey;
   status: Status;
+  // Approved under an earlier rate sheet: no flags at the time, but its rate is off today's sheet.
+  approvedUnderOldRates?: boolean;
   reviewer?: ReviewerKey;
   reviewStartedHoursAgo?: number;
   decidedHoursAgo?: number;
@@ -61,6 +64,11 @@ export type SeedSubmission = {
 const FOOTER =
   "You're receiving this because you're a ClearPath customer. Unsubscribe: clearpath.example.com/unsubscribe · ClearPath Financial, 100 Example Way, Suite 400, Columbus, OH 43215 (fictional address)";
 const NMLS = "ClearPath Financial, NMLS ID #2045817.";
+const [asOfY, asOfM, asOfD] = ratesAsOfDate().split("-").map(Number);
+const AS_OF = new Date(asOfY, asOfM - 1, asOfD).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+// Mortgage rates always carry their date and assumptions.
+const MORTGAGE_BASIS = `Rate as of ${AS_OF}; assumes a 740 credit score and 20% down.`;
+export const PARTNER_DISCLOSURE = "We may be compensated when you apply through our links.";
 
 // The live queue and recent history: one story per item.
 export const SUBMISSIONS: SeedSubmission[] = [
@@ -96,7 +104,7 @@ export const SUBMISSIONS: SeedSubmission[] = [
         hoursAgo: 52,
         fields: {
           placementUrl: "https://cardcompass.example.com/reviews/clearpath-personal-loan",
-          copy: "Our pick for debt consolidation: ClearPath Financial personal loans with rates as low as 4.99% APR, terms from 24 to 60 months and no prepayment penalty. Checking your rate won't affect your credit score.",
+          copy: `Our pick for debt consolidation: ClearPath Financial personal loans with rates as low as 4.99% APR, terms from 24 to 60 months and no prepayment penalty. Checking your rate won't affect your credit score. ${PARTNER_DISCLOSURE}`,
         },
         reason: "Taken from ClearPath's rates page in March.",
       },
@@ -136,7 +144,7 @@ export const SUBMISSIONS: SeedSubmission[] = [
         hoursAgo: 26,
         fields: {
           platform: "Facebook",
-          postCopy: "Thinking about buying next year? See if you prequalify for a home loan in minutes. Rates from 6.42% APR. Checking won't affect your credit score.",
+          postCopy: `Thinking about buying next year? See if you prequalify for a home loan in minutes. Rates from 6.42% APR. ${MORTGAGE_BASIS} Checking won't affect your credit score.`,
           link: "https://clearpath.example.com/mortgage/prequal",
         },
         reason: "The NMLS ID is on the landing page the post links to.",
@@ -157,7 +165,7 @@ export const SUBMISSIONS: SeedSubmission[] = [
         fields: {
           subject: "Your fall projects, funded",
           preheader: "Fixed monthly payments for the projects on your list.",
-          body: "Kitchen refresh? New roof? Borrow $10,000 and pay just $208/month for 60 months. Funds can arrive as soon as the next business day.",
+          body: "Kitchen refresh? New roof? Borrow $10,000 and pay just $208/month for 60 months. Funds can arrive as soon as the next business day after approval.",
           footer: FOOTER,
         },
         reason: "APR is on the landing page; I wanted to keep the email short.",
@@ -172,7 +180,7 @@ export const SUBMISSIONS: SeedSubmission[] = [
         fields: {
           subject: "Your fall projects, funded",
           preheader: "Fixed monthly payments for the projects on your list.",
-          body: "Kitchen refresh? New roof? Borrow $10,000 and pay $208/month for 60 months at 8.99% APR, our lowest rate. APRs range from 8.99% to 35.99% based on your credit, so your rate may be higher. Funds can arrive as soon as the next business day.",
+          body: "Kitchen refresh? New roof? Borrow $10,000 and pay $208/month for 60 months at 8.99% APR, our lowest rate. APRs range from 8.99% to 35.99% based on your credit, so your rate may be higher. Funds can arrive as soon as the next business day after approval.",
           footer: FOOTER,
         },
       },
@@ -221,7 +229,7 @@ export const SUBMISSIONS: SeedSubmission[] = [
         hoursAgo: 22,
         fields: {
           placementUrl: "https://brightpath-rates.example.com/cards/cash-back",
-          copy: "Our top cash back pick: the ClearPath Cash Back Card. Earn 2% on everything, pay no annual fee and enjoy 0% intro APR!",
+          copy: `Our top cash back pick: the ClearPath Cash Back Card. Earn 2% on everything, pay no annual fee and enjoy 0% intro APR! ${PARTNER_DISCLOSURE}`,
         },
         reason: "Space is limited in the roundup widget.",
         comments: [
@@ -247,7 +255,7 @@ export const SUBMISSIONS: SeedSubmission[] = [
         hoursAgo: 170,
         fields: {
           placementUrl: "https://brightpath-rates.example.com/personal-loans",
-          copy: "Need $5,000 to $40,000? We'll lend you the money at 8.99%–35.99% APR with 24–60 month terms.",
+          copy: "Need $5,000 to $40,000? We'll lend you the money at 8.99%–35.99% APR with 24–60 month terms. BrightPath Rates may be paid for referrals.",
         },
         reason: "Just a figure of speech.",
         comments: [
@@ -302,7 +310,7 @@ export const SUBMISSIONS: SeedSubmission[] = [
         hoursAgo: 40,
         fields: {
           url: "https://clearpath.example.com/mortgage/prequal",
-          copy: `Prequalify for a Home Loan | Rates From 6.42% APR | ${NMLS} Prequalification is not a commitment to lend.`,
+          copy: `Prequalify for a Home Loan | Rates From 6.42% APR | ${MORTGAGE_BASIS} | ${NMLS} Prequalification is not a commitment to lend.`,
         },
       },
     ],
@@ -377,6 +385,30 @@ export const SUBMISSIONS: SeedSubmission[] = [
     ],
   },
   {
+    // Approved under last month's rate sheet. Still running, but 8.49% is no longer offered.
+    product: "personal_loan",
+    channel: "email",
+    campaign: "Evergreen consolidation email",
+    launchInDays: -17,
+    submitter: "sam",
+    status: "approved",
+    approvedUnderOldRates: true,
+    reviewer: "hannah",
+    reviewStartedHoursAgo: 460,
+    decidedHoursAgo: 456,
+    versions: [
+      {
+        hoursAgo: 470,
+        fields: {
+          subject: "One payment instead of five",
+          preheader: "Check your rate in minutes.",
+          body: "Combine your credit card balances into one fixed monthly payment. Rates as low as 8.49% APR with autopay, up to 35.99% APR, with 24–60 month terms. Checking your rate won't affect your credit score.",
+          footer: FOOTER,
+        },
+      },
+    ],
+  },
+  {
     // Maya's draft: not yet submitted, so it isn't in the queue.
     product: "credit_card",
     channel: "social",
@@ -404,14 +436,14 @@ type HistoryRow = [Product, Channel, SubmitterKey, ReviewerKey, number, number, 
 export const HISTORY: HistoryRow[] = [
   ["personal_loan", "email", "maya", "dev", 29, 52, ["closed-end-trigger-terms"], "approved", "Refinance check-in email"],
   ["credit_card", "social", "sam", "hannah", 28, 20, [], "approved", "Cash back intro social"],
-  ["personal_loan", "affiliate", "fundfinder", "marcus", 27, 96, ["guaranteed-approval", "no-credit-check"], "rejected", "Bad credit loans listing"],
+  ["personal_loan", "affiliate", "fundfinder", "marcus", 27, 96, ["guaranteed-approval", "credit-impact"], "rejected", "Bad credit loans listing"],
   ["mortgage_prequal", "email", "lena", "dev", 26, 74, ["rate-not-offered"], "approved", "Rate drop alert"],
   ["credit_card", "affiliate", "cardcompass", "hannah", 24, 110, ["open-end-trigger-terms", "affiliate-implies-lender"], "approved", "Card comparison widget"],
   ["personal_loan", "sms", "sam", "dev", 22, 30, [], "approved", "Wedding loans SMS"],
   ["credit_card", "email", "maya", "marcus", 21, 70, ["preapproved-claim"], "approved", "Card upgrade offer"],
   ["personal_loan", "affiliate", "brightpath", "dev", 19, 46, ["closed-end-trigger-terms"], "approved", "Loan calculator placement"],
   ["mortgage_prequal", "social", "lena", "hannah", 17, 26, [], "approved", "First-time buyer social"],
-  ["personal_loan", "email", "sam", "marcus", 15, 58, ["no-credit-check"], "approved", "Medical bills email"],
+  ["personal_loan", "email", "sam", "marcus", 15, 58, ["credit-impact"], "approved", "Medical bills email"],
   ["credit_card", "affiliate", "cardcompass", "dev", 13, 80, ["guaranteed-approval"], "rejected", "Instant approval cards list"],
   ["credit_card", "social", "maya", "hannah", 11, 18, [], "approved", "Travel spending social"],
   ["personal_loan", "landing_page", "sam", "dev", 9, 44, ["rate-not-offered"], "approved", "Auto repair loan page"],
@@ -426,7 +458,7 @@ export const CLEAN_COPY: Record<Product, string> = {
     "Consolidate high-interest debt into one fixed monthly payment. Personal loans from $2,000 to $40,000 at 8.99%–35.99% APR with 24–60 month terms. Checking your rate won't affect your credit score.",
   credit_card:
     "Earn 2% cash back on every purchase with the ClearPath Cash Back Card. 0% intro APR on purchases for 12 months, then 19.99%–29.99% variable APR. No annual fee.",
-  mortgage_prequal: `See if you prequalify for a home loan in minutes. Rates from 6.42% APR. ${NMLS} Prequalification is not a commitment to lend.`,
+  mortgage_prequal: `See if you prequalify for a home loan in minutes. Rates from 6.42% APR. ${MORTGAGE_BASIS} ${NMLS} Prequalification is not a commitment to lend.`,
 };
 
 // Copy without rate terms, used when a history item's first round tripped a trigger-term rule.
@@ -439,12 +471,12 @@ export const COPY_WITHOUT_TERMS: Record<Product, string> = {
 export const SHORT_COPY: Record<Product, string> = {
   personal_loan: "ClearPath: Personal loans at 8.99%-35.99% APR, 24-60 mo terms. Check your rate: clearpath.example.com/r/pl Reply STOP to opt out",
   credit_card: "ClearPath: 2% cash back, no annual fee. 0% intro APR 12 mo, then 19.99%-29.99%. clearpath.example.com/r/cb Reply STOP to opt out",
-  mortgage_prequal: "ClearPath: Prequalify for a home loan, rates from 6.42% APR. NMLS #2045817. clearpath.example.com/r/mp Reply STOP to opt out",
+  mortgage_prequal: `ClearPath: Prequalify for a home loan. 6.42% APR as of ${AS_OF}. NMLS #2045817. clearpath.example.com/r/mp Reply STOP to opt out`,
 };
 
 export const VIOLATION_PHRASES: Partial<Record<RuleId, string>> = {
   "guaranteed-approval": "Approval guaranteed.",
-  "no-credit-check": "No credit check required.",
+  "credit-impact": "No credit check required.",
   "closed-end-trigger-terms": "Payments as low as $149/month.",
   "open-end-trigger-terms": "0% intro APR!",
   "rate-not-offered": "Rates as low as 5.49% APR.",

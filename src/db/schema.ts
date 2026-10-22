@@ -50,6 +50,13 @@ export const rateSheet = pgTable("rate_sheet", {
   termMaxMonths: integer("term_max_months"),
   annualFee: doublePrecision("annual_fee"),
   introAprMonths: integer("intro_apr_months"),
+  // The lowest APR assumes this autopay discount (percentage points), so ads must say so.
+  autopayDiscount: doublePrecision("autopay_discount"),
+  originationFeeMin: doublePrecision("origination_fee_min"),
+  originationFeeMax: doublePrecision("origination_fee_max"),
+  // Mortgage rates move daily; ads must show the date and assumptions behind a rate.
+  ratesAsOf: date("rates_as_of", { mode: "string" }),
+  rateAssumptions: text("rate_assumptions"),
   nmlsId: text("nmls_id"),
   notes: text("notes").notNull(),
 }).enableRLS();

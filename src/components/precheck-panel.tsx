@@ -80,7 +80,7 @@ export function PrecheckPanel({ findings, hasCopy, fieldLabel, fieldValue, activ
                     finding={finding}
                     active={activeKey === key}
                     fieldLabel={fieldLabel(finding.field)}
-                    replaced={fieldValue(finding.field).slice(finding.start, finding.replaceEnd ?? finding.end)}
+                    replaced={fieldValue(finding.field).slice(finding.replaceStart ?? finding.start, finding.replaceEnd ?? finding.end)}
                     onSelect={() => onSelect(finding, key)}
                     onApply={() => onApply(finding)}
                   />
