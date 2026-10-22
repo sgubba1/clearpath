@@ -1,14 +1,26 @@
 import Link from "next/link";
+import { NavLinks } from "@/components/nav-links";
 import { RoleSwitcher } from "@/components/role-switcher";
-import type { Identity, Role } from "@/lib/identities";
+import type { Role } from "@/lib/identities";
 import { getIdentity } from "@/lib/session";
 
-// Only links to pages that exist; later milestones add entries here.
 const NAV: Record<Role, { href: string; label: string }[]> = {
-  marketer: [{ href: "/ads", label: "My ads" }],
-  affiliate: [{ href: "/ads", label: "My ads" }],
-  reviewer: [{ href: "/queue", label: "Review queue" }],
-  manager: [{ href: "/dashboard", label: "Team overview" }],
+  marketer: [
+    { href: "/ads", label: "My ads" },
+    { href: "/rules", label: "Ad rules" },
+  ],
+  affiliate: [
+    { href: "/ads", label: "My ads" },
+    { href: "/rules", label: "Ad rules" },
+  ],
+  reviewer: [
+    { href: "/queue", label: "Review queue" },
+    { href: "/rules", label: "Ad rules" },
+  ],
+  manager: [
+    { href: "/dashboard", label: "Team overview" },
+    { href: "/rules", label: "Ad rules" },
+  ],
 };
 
 export async function SiteHeader() {
@@ -21,7 +33,7 @@ export async function SiteHeader() {
           <Link href={identity?.home ?? "/"} className="font-semibold tracking-tight">
             ClearPath <span className="font-normal text-muted-foreground">Compliance Review</span>
           </Link>
-          {identity && <Nav identity={identity} />}
+          {identity && <NavLinks items={NAV[identity.role]} />}
         </div>
         {identity ? (
           <RoleSwitcher current={identity} />
@@ -30,17 +42,5 @@ export async function SiteHeader() {
         )}
       </div>
     </header>
-  );
-}
-
-function Nav({ identity }: { identity: Identity }) {
-  return (
-    <nav aria-label="Main" className="flex gap-4 text-sm">
-      {NAV[identity.role].map((item) => (
-        <Link key={item.href} href={item.href} className="text-muted-foreground hover:text-foreground">
-          {item.label}
-        </Link>
-      ))}
-    </nav>
   );
 }

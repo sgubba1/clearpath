@@ -17,7 +17,8 @@ export async function generateMetadata({ params }: PageProps<"/queue/[id]">): Pr
 }
 
 export default async function ReviewPage({ params, searchParams }: PageProps<"/queue/[id]">) {
-  await requireRole(["reviewer"]);
+  // Managers can open any ad read-only (from the audit log or rate-change list); only reviewers decide.
+  const identity = await requireRole(["reviewer", "manager"]);
   const item = await getReviewItem(Number((await params).id));
   if (!item) notFound();
   const query = await searchParams;
@@ -32,12 +33,14 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/q
   ]
     .filter(Boolean)
     .join(" · ");
-  const canDecide = item.status === "submitted" || item.status === "in_review";
+  const isReviewer = identity.role === "reviewer";
+  const waitingForReview = item.status === "submitted" || item.status === "in_review";
+  const canDecide = isReviewer && waitingForReview;
   const submitter = item.partner ? `${item.submitterName}, ${item.partner.name}` : item.submitterName;
 
   return (
     <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 sm:px-6">
-      {item.status === "submitted" && <ClaimOnOpen submissionId={item.id} />}
+      {isReviewer && item.status === "submitted" && <ClaimOnOpen submissionId={item.id} />}
 
       {query.done && (
         <p role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
@@ -46,13 +49,13 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/q
       )}
 
       <div className="space-y-3">
-        <Link href="/queue" className="text-sm text-muted-foreground hover:text-foreground">
-          ← Review queue
+        <Link href={isReviewer ? "/queue" : "/dashboard"} className="text-sm text-muted-foreground hover:text-foreground">
+          ← {isReviewer ? "Review queue" : "Team overview"}
         </Link>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <h1 className="text-2xl font-semibold tracking-tight">{item.campaign}</h1>
           <div className="flex items-center gap-2">
-            {canDecide && <RiskBadge score={item.riskScore} />}
+            {waitingForReview && <RiskBadge score={item.riskScore} />}
             <StatusBadge status={item.status} />
           </div>
         </div>
@@ -68,18 +71,20 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/q
           {item.versions.length > 1 && <Tag>Round {item.versions.length}</Tag>}
           <span aria-hidden>·</span>
           <span>{launchLabel(item.launchDate)}</span>
-          {canDecide && item.submittedAt && (
+          {waitingForReview && item.submittedAt && (
             <>
               <span aria-hidden>·</span>
               <span>Waiting {waitingFor(item.submittedAt)}</span>
             </>
           )}
         </div>
-        {!canDecide && (
+        {!waitingForReview && (
           <p className="rounded-lg bg-muted/60 px-4 py-2.5 text-sm">
-            {item.status === "changes_requested"
+            {item.status === "draft"
+              ? "Still a draft. It hasn't been sent to compliance."
+              : item.status === "changes_requested"
               ? `Sent back to ${item.submitterName} for changes. It returns to the queue when they resubmit.`
-              : `${item.status === "approved" ? "Approved" : "Rejected"} by ${item.reviewerName ?? "a reviewer"}${item.decidedAt ? ` ${timeAgo(item.decidedAt)}` : ""}.`}
+                : `${item.status === "approved" ? "Approved" : "Rejected"} by ${item.reviewerName ?? "a reviewer"}${item.decidedAt ? ` ${timeAgo(item.decidedAt)}` : ""}.`}
           </p>
         )}
       </div>
