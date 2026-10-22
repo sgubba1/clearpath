@@ -36,7 +36,8 @@ export function ReviewWorkspace({ submissionId, product, channel, fields, flags,
   const [confirmed, setConfirmed] = useState(false);
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const errors = state.errors;
-  const openFlags = flags.filter((flag) => flag.status !== "dismissed");
+  // While deciding, flags already judged acceptable drop out; afterwards, show everything found at submission.
+  const openFlags = canDecide ? flags.filter((flag) => flag.status !== "dismissed") : flags;
   // One reason usually covers every flag (it's asked once at submit), so show it once.
   const reasons = [...new Set(openFlags.map((flag) => flag.reason).filter(Boolean))];
   const sharedReason = reasons.length === 1 && openFlags.every((flag) => flag.reason === reasons[0]) ? reasons[0] : undefined;
@@ -98,13 +99,20 @@ export function ReviewWorkspace({ submissionId, product, channel, fields, flags,
         <p className="rounded-lg bg-muted/60 px-4 py-2.5 text-sm">
           <span className="font-medium">Rate sheet:</span> {rateTerms}
         </p>
-        <div className="hidden lg:block">{renderChecklist("side")}</div>
+        {/* Judgment calls matter before a decision, not after. */}
+        {canDecide && <div className="hidden lg:block">{renderChecklist("side")}</div>}
       </div>
 
       <div className="space-y-4 lg:sticky lg:top-6">
         <section aria-labelledby="flags-title" className="rounded-xl border bg-card p-5">
           <h2 id="flags-title" className="font-semibold">
-            {openFlags.length ? `${openFlags.length} flagged by pre-check` : "Pre-check found no issues"}
+            {canDecide
+              ? openFlags.length
+                ? `${openFlags.length} flagged by pre-check`
+                : "Pre-check found no issues"
+              : openFlags.length
+                ? `${openFlags.length} flagged at submission`
+                : "At submission, the pre-check found no issues"}
           </h2>
           {sharedReason && (
             <blockquote className="mt-3 border-l-2 border-amber-400 bg-amber-50 py-2 pr-3 pl-3 text-sm text-amber-950">
@@ -202,14 +210,14 @@ export function ReviewWorkspace({ submissionId, product, channel, fields, flags,
               })}
             </ul>
           ) : (
-            <p className="mt-1 text-sm text-muted-foreground">Check the judgment calls, then approve if it reads right.</p>
+            canDecide && <p className="mt-1 text-sm text-muted-foreground">Check the judgment calls, then approve if it reads right.</p>
           )}
           <div className="mt-4">
             <AiSecondOpinion enabled={aiEnabled} input={{ product, channel, fields }} fieldLabel={fieldLabel} />
           </div>
         </section>
 
-        <div className="lg:hidden">{renderChecklist("inline")}</div>
+        {canDecide && <div className="lg:hidden">{renderChecklist("inline")}</div>}
 
         {canDecide && (
           <section aria-labelledby="decision-title" className="space-y-4 rounded-xl border bg-card p-5">

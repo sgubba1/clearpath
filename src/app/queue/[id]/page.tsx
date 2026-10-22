@@ -7,10 +7,12 @@ import { ReviewWorkspace } from "@/components/review-workspace";
 import { RoundChanges } from "@/components/round-changes";
 import { describeEvent } from "@/lib/activity";
 import { aiReviewEnabled } from "@/lib/ai-review";
-import { launchLabel, timeAgo, waitingFor } from "@/lib/format";
+import { formatDate, launchLabel, timeAgo, waitingFor } from "@/lib/format";
 import { CHANNEL_LABELS, PRODUCT_LABELS, submissionRef } from "@/lib/labels";
 import { getReviewItem } from "@/lib/queries";
 import { getRateSheet } from "@/lib/rate-sheet";
+import { getRule } from "@/lib/rules/catalog";
+import { precheck } from "@/lib/rules/engine";
 import { requireRole } from "@/lib/session";
 import { getTeamRules } from "@/lib/team-rules";
 
@@ -24,14 +26,18 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/q
   const item = await getReviewItem(Number((await params).id));
   if (!item) notFound();
   const query = await searchParams;
-  await getTeamRules();
+  const teamRules = await getTeamRules();
 
   const version = item.versions[item.versions.length - 1];
-  const rates = (await getRateSheet())[item.product];
+  const rateSheet = await getRateSheet();
+  const rates = rateSheet[item.product];
   const rateTerms = [
     `${PRODUCT_LABELS[item.product]} ${rates.aprMin.toFixed(2)}%–${rates.aprMax.toFixed(2)}% APR`,
+    rates.autopayDiscount ? `lowest rate requires autopay` : null,
+    rates.originationFeeMax ? `origination fee ${rates.originationFeeMin ?? 0}%–${rates.originationFeeMax}%` : null,
     rates.termMinMonths && rates.termMaxMonths ? `${rates.termMinMonths}–${rates.termMaxMonths} month terms` : null,
     rates.introAprMonths ? `0% intro APR for ${rates.introAprMonths} months` : null,
+    rates.ratesAsOf ? `rates as of ${formatDate(rates.ratesAsOf)}` : null,
     rates.nmlsId ? `NMLS ID #${rates.nmlsId}` : null,
   ]
     .filter(Boolean)
@@ -39,6 +45,12 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/q
   const isReviewer = identity.role === "reviewer";
   const waitingForReview = item.status === "submitted" || item.status === "in_review";
   const canDecide = isReviewer && waitingForReview;
+  // Re-check the copy with today's rules and rates: a rate change after approval, or a team rule
+  // added after submission, shows up here even though the stored flags predate it.
+  const storedKeys = new Set(version.flags.map((flag) => `${flag.ruleId}|${flag.matchText}`));
+  const sinceSubmission = precheck({ product: item.product, channel: item.channel, fields: version.fields }, rateSheet, teamRules).filter(
+    (finding) => !storedKeys.has(`${finding.ruleId}|${finding.matchText}`),
+  );
   const submitter = item.partner ? `${item.submitterName}, ${item.partner.name}` : item.submitterName;
 
   return (
@@ -91,6 +103,27 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/q
           </p>
         )}
       </div>
+
+      {sinceSubmission.length > 0 && (
+        <section aria-labelledby="since-title" className="rounded-xl border border-amber-300 bg-amber-50 p-5">
+          <h2 id="since-title" className="font-semibold text-amber-950">
+            {item.status === "approved" ? "No longer passes today's check" : "New since this round was submitted"}
+          </h2>
+          <p className="mt-1 text-sm text-amber-900">
+            {item.status === "approved"
+              ? "This was approved under earlier rules or rates. Checked again just now:"
+              : "The rules or rates changed after submission. Checked again just now:"}
+          </p>
+          <ul className="mt-3 space-y-2">
+            {sinceSubmission.map((finding, index) => (
+              <li key={index} className="rounded-lg bg-background p-3 text-sm">
+                <p className="font-medium">{getRule(finding.ruleId).title}</p>
+                <p className="mt-0.5">{finding.matchText ? <>&ldquo;{finding.matchText}&rdquo;{finding.detail && <>: {finding.detail}</>}</> : finding.detail ?? "Required text is missing."}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {item.versions.length > 1 && (
         <RoundChanges channel={item.channel} previous={item.versions[item.versions.length - 2]} current={version} />
