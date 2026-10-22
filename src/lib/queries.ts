@@ -75,7 +75,10 @@ export async function getOwnedAd(identity: Identity, id: number) {
     where: and(eq(submissions.id, id), owner),
     with: {
       partner: true,
-      versions: { orderBy: (v, { asc }) => [asc(v.number)] },
+      versions: {
+        orderBy: (v, { asc }) => [asc(v.number)],
+        with: { comments: { orderBy: (c, { asc }) => [asc(c.createdAt)], with: { flag: true } } },
+      },
     },
   });
 }

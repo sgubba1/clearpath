@@ -4,6 +4,7 @@ import { StatusBadge } from "@/components/badges";
 import { Button } from "@/components/ui/button";
 import type { Status } from "@/db/schema";
 import { formatDate, launchLabel, timeAgo } from "@/lib/format";
+import { getRule } from "@/lib/rules/catalog";
 import { CHANNEL_FIELDS, CHANNEL_LABELS, PRODUCT_LABELS, submissionRef } from "@/lib/labels";
 import { getOwnedAd } from "@/lib/queries";
 import { requireRole } from "@/lib/session";
@@ -13,9 +14,9 @@ const NEXT_STEP: Record<Status, string> = {
   draft: "This draft hasn't been sent yet. Only you can see it.",
   submitted: "Compliance has it. Most ads get a decision within two days, and any feedback will show up here.",
   in_review: "A reviewer is looking at it now.",
-  changes_requested: "Compliance asked for changes.",
+  changes_requested: "Compliance asked for changes. See their notes below.",
   approved: "Approved. This version is cleared to run as submitted.",
-  rejected: "Rejected. This ad can't run.",
+  rejected: "Rejected. This ad can't run. See the reviewer's notes below.",
 };
 
 export default async function AdPage({ params, searchParams }: PageProps<"/ads/[id]">) {
@@ -78,6 +79,30 @@ export default async function AdPage({ params, searchParams }: PageProps<"/ads/[
           </div>
         ))}
       </section>
+
+      {version.comments.length > 0 && (
+        <section aria-labelledby="feedback" className="space-y-3">
+          <h2 id="feedback" className="font-semibold">
+            Feedback from compliance
+          </h2>
+          <ul className="space-y-3">
+            {version.comments.map((comment) => (
+              <li key={comment.id} className="rounded-xl border bg-card p-4">
+                {comment.flag && (
+                  <p className="mb-1 text-sm font-medium text-amber-900">
+                    About: {getRule(comment.flag.ruleId).title}
+                    {comment.flag.matchText && <span className="font-normal"> · &ldquo;{comment.flag.matchText}&rdquo;</span>}
+                  </p>
+                )}
+                <p>{comment.body}</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {comment.authorName} · {timeAgo(comment.createdAt)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </main>
   );
 }
