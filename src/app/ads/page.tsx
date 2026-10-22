@@ -3,9 +3,10 @@ import { StatusBadge } from "@/components/badges";
 import { EmptyState, PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import type { Status } from "@/db/schema";
-import { timeAgo } from "@/lib/format";
+import { decisionExpectation, timeAgo } from "@/lib/format";
 import { CHANNEL_LABELS, PRODUCT_LABELS, submissionRef } from "@/lib/labels";
 import { getMyAds } from "@/lib/queries";
+import { REVIEW_TARGET_HOURS } from "@/lib/risk";
 import { requireRole } from "@/lib/session";
 
 // Group by what the submitter should do next, not by raw status.
@@ -62,6 +63,9 @@ export default async function MyAdsPage() {
                           {submissionRef(ad.id)} · {CHANNEL_LABELS[ad.channel]} · {PRODUCT_LABELS[ad.product]} · Updated{" "}
                           {timeAgo(ad.updatedAt)}
                         </p>
+                        {(ad.status === "submitted" || ad.status === "in_review") && (
+                          <p className="text-sm text-sky-900">{decisionExpectation(ad.status, ad.submittedAt, ad.reviewerName, REVIEW_TARGET_HOURS)}</p>
+                        )}
                         {ad.status === "changes_requested" && ad.openComments > 0 && (
                           <p className="text-sm text-amber-900">
                             {ad.reviewerName ?? "Compliance"} left {ad.openComments} comment{ad.openComments === 1 ? "" : "s"}

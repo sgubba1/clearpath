@@ -43,3 +43,25 @@ export function formatDate(isoDate: string) {
   const [y, m, d] = isoDate.split("-").map(Number);
   return new Date(y, m - 1, d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
+
+// When a submitter can expect a decision, from the review target. Says so plainly if it's late.
+export function decisionExpectation(
+  status: "submitted" | "in_review",
+  submittedAt: Date | null,
+  reviewerName: string | null,
+  targetHours: number,
+  now = new Date(),
+) {
+  const who = status === "in_review" && reviewerName ? `In review with ${reviewerName}` : "Waiting for a reviewer";
+  if (!submittedAt) return who;
+  const due = new Date(submittedAt.getTime() + targetHours * HOUR);
+  if (due < now) return `${who} · taking longer than the usual two days, so it's marked overdue in the review queue`;
+  const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+  const tomorrow = new Date(now.getTime() + DAY);
+  const when = sameDay(due, now)
+    ? "today"
+    : sameDay(due, tomorrow)
+      ? "tomorrow"
+      : `by ${due.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}`;
+  return `${who} · decision expected ${when}`;
+}

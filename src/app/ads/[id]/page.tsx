@@ -3,18 +3,19 @@ import { notFound } from "next/navigation";
 import { StatusBadge } from "@/components/badges";
 import { Button } from "@/components/ui/button";
 import type { Status } from "@/db/schema";
-import { formatDate, launchLabel, timeAgo } from "@/lib/format";
+import { decisionExpectation, formatDate, launchLabel, timeAgo } from "@/lib/format";
 import { getRule } from "@/lib/rules/catalog";
 import { CHANNEL_FIELDS, CHANNEL_LABELS, PRODUCT_LABELS, submissionRef } from "@/lib/labels";
 import { getOwnedAd } from "@/lib/queries";
+import { REVIEW_TARGET_HOURS } from "@/lib/risk";
 import { requireRole } from "@/lib/session";
 import { getTeamRules } from "@/lib/team-rules";
 
 // What the submitter should expect next, in plain language.
 const NEXT_STEP: Record<Status, string> = {
   draft: "This draft hasn't been sent yet. Only you can see it.",
-  submitted: "Compliance has it. Most ads get a decision within two days, and any feedback will show up here.",
-  in_review: "A reviewer is looking at it now.",
+  submitted: "Compliance has it. Any feedback will show up here.",
+  in_review: "A reviewer is looking at it now. Any feedback will show up here.",
   changes_requested: "Compliance asked for changes. Their notes are below; revise the ad and resubmit when ready.",
   approved: "Approved. This version is cleared to run as submitted.",
   rejected: "Rejected. This ad can't run. See the reviewer's notes below.",
@@ -53,6 +54,9 @@ export default async function AdPage({ params, searchParams }: PageProps<"/ads/[
           <StatusBadge status={ad.status} />
         </div>
         <p className="text-muted-foreground">{NEXT_STEP[ad.status]}</p>
+        {(ad.status === "submitted" || ad.status === "in_review") && (
+          <p className="text-sm font-medium text-sky-900">{decisionExpectation(ad.status, ad.submittedAt, ad.reviewerName, REVIEW_TARGET_HOURS)}</p>
+        )}
         {ad.status === "draft" && (
           <Button asChild>
             <Link href={`/ads/${ad.id}/edit`}>Continue editing</Link>
