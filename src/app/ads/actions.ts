@@ -3,11 +3,13 @@
 import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db";
-import { auditEvents, channelEnum, productEnum, submissions, versions, type Channel, type Product } from "@/db/schema";
+import { auditEvents, channelEnum, flags, productEnum, submissions, versions, type Channel, type Product } from "@/db/schema";
 import { daysUntil } from "@/lib/format";
 import type { Identity } from "@/lib/identities";
 import { CHANNEL_FIELDS, CHANNELS_FOR } from "@/lib/labels";
+import { getRateSheet } from "@/lib/rate-sheet";
 import { riskScore } from "@/lib/risk";
+import { precheck } from "@/lib/rules/engine";
 import { getIdentity } from "@/lib/session";
 
 export type AdFormValues = {
@@ -44,6 +46,16 @@ export async function saveAd(_prev: AdFormState, formData: FormData): Promise<Ad
   const fields = Object.fromEntries(CHANNEL_FIELDS[channel].map((field) => [field.key, (values.fields[field.key] ?? "").trim()]));
   const submitting = intent === "submit";
 
+  // The server re-runs the pre-check rather than trusting the browser's result.
+  const findings = submitting ? precheck({ product, channel, fields }, await getRateSheet()) : [];
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (findings.length && !reason) {
+    return {
+      errors: { reason: "Add a short reason so the reviewer knows why these were sent unchanged." },
+      message: `${findings.length} ${findings.length === 1 ? "issue is" : "issues are"} still open.`,
+    };
+  }
+
   const submissionId = await db.transaction(async (tx) => {
     let id = draftId;
     const base = {
@@ -52,12 +64,15 @@ export async function saveAd(_prev: AdFormState, formData: FormData): Promise<Ad
       campaign: values.campaign.trim(),
       launchDate: values.launchDate,
       status: submitting ? ("submitted" as const) : ("draft" as const),
-      riskScore: submitting ? riskScore({ openFlagSeverities: [], submitterType, product, launchDate: values.launchDate, now }) : 0,
+      riskScore: submitting
+        ? riskScore({ openFlagSeverities: findings.map((finding) => finding.severity), submitterType, product, launchDate: values.launchDate, now })
+        : 0,
       submittedAt: submitting ? now : null,
       firstSubmittedAt: submitting ? now : null,
       updatedAt: now,
     };
 
+    let versionId: number;
     if (id) {
       // Drafts are edited in place; they only become a numbered round once submitted.
       const [owned] = await tx
@@ -66,7 +81,12 @@ export async function saveAd(_prev: AdFormState, formData: FormData): Promise<Ad
         .where(and(eq(submissions.id, id), eq(submissions.status, "draft"), ownerFilter(identity)))
         .returning({ id: submissions.id });
       if (!owned) throw new Error("This draft can't be edited. It may have been submitted already.");
-      await tx.update(versions).set({ fields, createdAt: now }).where(and(eq(versions.submissionId, id), eq(versions.number, 1)));
+      const [version] = await tx
+        .update(versions)
+        .set({ fields, createdAt: now })
+        .where(and(eq(versions.submissionId, id), eq(versions.number, 1)))
+        .returning({ id: versions.id });
+      versionId = version.id;
     } else {
       const [created] = await tx
         .insert(submissions)
@@ -81,11 +101,34 @@ export async function saveAd(_prev: AdFormState, formData: FormData): Promise<Ad
         })
         .returning({ id: submissions.id });
       id = created.id;
-      await tx.insert(versions).values({ submissionId: id, number: 1, fields, createdAt: now });
+      const [version] = await tx.insert(versions).values({ submissionId: id, number: 1, fields, createdAt: now }).returning({ id: versions.id });
+      versionId = version.id;
       await tx.insert(auditEvents).values(event(identity, id, "created", base.campaign));
     }
 
-    if (submitting) await tx.insert(auditEvents).values(event(identity, id, "submitted"));
+    if (submitting) {
+      if (findings.length) {
+        await tx.insert(flags).values(
+          findings.map((finding) => ({
+            versionId,
+            ruleId: finding.ruleId,
+            field: finding.field,
+            matchText: finding.matchText,
+            detail: finding.detail ?? null,
+            start: finding.start,
+            end: finding.end,
+            severity: finding.severity,
+            status: "acknowledged" as const,
+            reason,
+          })),
+        );
+      }
+      await tx.insert(auditEvents).values([
+        event(identity, id, "prechecked", findings.length ? `${findings.length} issue${findings.length === 1 ? "" : "s"} found` : "No issues found"),
+        ...(findings.length ? [event(identity, id, "flags_acknowledged", `Sent with ${findings.length} unresolved: "${reason}"`)] : []),
+        event(identity, id, "submitted"),
+      ]);
+    }
     return id;
   });
 
