@@ -8,6 +8,7 @@ import { getRule } from "@/lib/rules/catalog";
 import { CHANNEL_FIELDS, CHANNEL_LABELS, PRODUCT_LABELS, submissionRef } from "@/lib/labels";
 import { getOwnedAd } from "@/lib/queries";
 import { requireRole } from "@/lib/session";
+import { getTeamRules } from "@/lib/team-rules";
 
 // What the submitter should expect next, in plain language.
 const NEXT_STEP: Record<Status, string> = {
@@ -23,6 +24,7 @@ export default async function AdPage({ params, searchParams }: PageProps<"/ads/[
   const identity = await requireRole(["marketer", "affiliate"]);
   const ad = await getOwnedAd(identity, Number((await params).id));
   if (!ad) notFound();
+  await getTeamRules();
   const query = await searchParams;
 
   const version = ad.versions[ad.versions.length - 1];

@@ -8,6 +8,7 @@ import { daysUntil } from "@/lib/format";
 import type { Identity } from "@/lib/identities";
 import { CHANNEL_FIELDS, CHANNELS_FOR } from "@/lib/labels";
 import { getRateSheet } from "@/lib/rate-sheet";
+import { getTeamRules } from "@/lib/team-rules";
 import { riskScore } from "@/lib/risk";
 import { precheck } from "@/lib/rules/engine";
 import { getIdentity } from "@/lib/session";
@@ -51,7 +52,7 @@ export async function saveAd(_prev: AdFormState, formData: FormData): Promise<Ad
   const submitting = intent === "submit";
 
   // The server re-runs the pre-check rather than trusting the browser's result.
-  const findings = submitting ? precheck({ product, channel, fields }, await getRateSheet()) : [];
+  const findings = submitting ? precheck({ product, channel, fields }, await getRateSheet(), await getTeamRules()) : [];
   const reason = String(formData.get("reason") ?? "").trim();
   if (findings.length && !reason) {
     return {

@@ -144,6 +144,30 @@ export const auditEvents = pgTable("audit_events", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }).enableRLS();
 
+// Rules compliance adds in the app, on top of the built-in library. Turned off rather than
+// deleted, so flags that point at them keep their explanation.
+export const teamRules = pgTable("team_rules", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  category: text("category").notNull(),
+  severity: severityEnum("severity").notNull(),
+  // "phrases": flag any of these words or phrases. "required": flag when this text is missing.
+  kind: text("kind").$type<"phrases" | "required">().notNull(),
+  phrases: jsonb("phrases").$type<string[]>().notNull().default([]),
+  requiredText: text("required_text"),
+  replacement: text("replacement"),
+  products: jsonb("products").$type<Product[] | null>(),
+  channels: jsonb("channels").$type<Channel[] | null>(),
+  whyItMatters: text("why_it_matters").notNull(),
+  fixHint: text("fix_hint").notNull(),
+  source: text("source"),
+  sourceUrl: text("source_url"),
+  active: boolean("active").notNull().default(true),
+  createdById: text("created_by_id").notNull(),
+  createdByName: text("created_by_name").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}).enableRLS();
+
 export const submissionsRelations = relations(submissions, ({ one, many }) => ({
   partner: one(partners, { fields: [submissions.partnerId], references: [partners.id] }),
   versions: many(versions),

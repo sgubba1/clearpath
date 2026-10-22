@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { Channel, Product } from "@/db/schema";
 import { CHANNEL_FIELDS, CHANNEL_HINTS, CHANNEL_LABELS, PRODUCT_LABELS, type ChannelField } from "@/lib/labels";
 import type { ExampleAd } from "@/lib/example-ads";
-import { getRule } from "@/lib/rules/catalog";
+import { getRule, type TeamRule } from "@/lib/rules/catalog";
 import { applyFix, precheck, type Finding, type RateSheet } from "@/lib/rules/engine";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +31,7 @@ type Props = {
   submitterLabel: string;
   minLaunchDate: string;
   rateSheet: RateSheet;
+  teamRules: TeamRule[];
   aiEnabled: boolean;
   // Ready-made ads evaluators can load instead of writing copy (new ads only).
   examples?: ExampleAd[];
@@ -40,7 +41,7 @@ type Props = {
 
 export type RevisionFeedback = { id: number; author: string; body: string; about?: string; quote?: string };
 
-export function AdForm({ draftId, initial, channels, submitterLabel, minLaunchDate, rateSheet, aiEnabled, examples = [], revision }: Props) {
+export function AdForm({ draftId, initial, channels, submitterLabel, minLaunchDate, rateSheet, teamRules, aiEnabled, examples = [], revision }: Props) {
   const [state, formAction, pending] = useActionState<AdFormState, FormData>(saveAd, { errors: {} });
   // Controlled values survive validation errors and let the pre-check apply rewrites.
   const [values, setValues] = useState<AdFormValues>(initial);
@@ -64,9 +65,9 @@ export function AdForm({ draftId, initial, channels, submitterLabel, minLaunchDa
   const findings = useMemo(
     () =>
       values.product && values.channel
-        ? precheck({ product: values.product, channel: values.channel, fields: values.fields }, rateSheet)
+        ? precheck({ product: values.product, channel: values.channel, fields: values.fields }, rateSheet, teamRules)
         : [],
-    [values.product, values.channel, values.fields, rateSheet],
+    [values.product, values.channel, values.fields, rateSheet, teamRules],
   );
   const marksByField = useMemo(() => {
     const map = new Map<string, Mark[]>();

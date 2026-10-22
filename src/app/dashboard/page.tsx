@@ -9,6 +9,7 @@ import { getAuditLog, getTeamMetrics, type TeamMetrics } from "@/lib/metrics";
 import { REVIEW_TARGET_HOURS } from "@/lib/risk";
 import { getRule } from "@/lib/rules/catalog";
 import { requireRole } from "@/lib/session";
+import { getTeamRules } from "@/lib/team-rules";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Team overview" };
@@ -20,6 +21,7 @@ const TABS = [
 
 export default async function DashboardPage({ searchParams }: PageProps<"/dashboard">) {
   await requireRole(["manager"]);
+  await getTeamRules();
   const tab = (await searchParams).tab === "audit" ? "audit" : "overview";
 
   return (

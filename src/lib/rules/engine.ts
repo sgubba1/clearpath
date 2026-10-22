@@ -1,6 +1,6 @@
 import type { Channel, Product, Severity } from "@/db/schema";
 import { CHANNEL_FIELDS } from "@/lib/labels";
-import { getRule, RULES, type RuleId, type RuleMeta } from "./catalog";
+import { getRule, RULES, type RuleId, type RuleMeta, type TeamRule } from "./catalog";
 
 // The pre-check. Pure and synchronous so the same code runs live in the browser as
 // people type and again on the server when they submit.
@@ -21,7 +21,8 @@ export type RateTerms = {
 export type RateSheet = Record<Product, RateTerms>;
 
 export type Finding = {
-  ruleId: RuleId;
+  // A built-in rule id, or "team-<n>" for a rule compliance added.
+  ruleId: string;
   severity: Severity;
   field: string;
   // Character range in the field. Equal start and end means something is missing.
@@ -387,7 +388,22 @@ const MAIN_FIELD: Record<Channel, string> = {
 
 const SEVERITY_ORDER: Record<Severity, number> = { high: 0, medium: 1, low: 2 };
 
-export function precheck(input: AdInput, rateSheet: RateSheet): Finding[] {
+// Team rules: flag any listed phrase (whole words, any case), or flag when required text is missing.
+function teamRuleFindings(rule: TeamRule, ctx: Ctx): Omit<Finding, "ruleId" | "severity">[] {
+  const { kind, phrases, requiredText, replacement } = rule.team;
+  if (kind === "required") {
+    if (!requiredText || ctx.allText.toLowerCase().includes(requiredText.toLowerCase())) return [];
+    const text = ctx.fields[ctx.mainField] ?? "";
+    return [{ field: ctx.mainField, start: text.length, end: text.length, matchText: "", replacement: `${spacer(text)}${requiredText}` }];
+  }
+  const usable = phrases.map((phrase) => phrase.trim()).filter(Boolean);
+  if (usable.length === 0) return [];
+  const escaped = usable.map((phrase) => phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+"));
+  const pattern = new RegExp(`(?<![\\w])(?:${escaped.join("|")})(?![\\w])`, "i");
+  return phraseRule(pattern, () => replacement ?? undefined)(ctx);
+}
+
+export function precheck(input: AdInput, rateSheet: RateSheet, teamRules: TeamRule[] = []): Finding[] {
   const fieldOrder = CHANNEL_FIELDS[input.channel].map((field) => field.key);
   const ctx: Ctx = {
     ...input,
@@ -398,9 +414,14 @@ export function precheck(input: AdInput, rateSheet: RateSheet): Finding[] {
   // Nothing to check until there's copy.
   if (!ctx.allText.trim()) return [];
 
-  const findings = RULES.filter((rule) => applies(rule, input)).flatMap((rule) =>
-    DETECTORS[rule.id](ctx).map((finding) => ({ ...finding, ruleId: rule.id, severity: getRule(rule.id).severity })),
-  );
+  const findings: Finding[] = [
+    ...RULES.filter((rule) => applies(rule, input)).flatMap((rule) =>
+      DETECTORS[rule.id](ctx).map((finding) => ({ ...finding, ruleId: rule.id, severity: getRule(rule.id).severity })),
+    ),
+    ...teamRules
+      .filter((rule) => rule.team.active && applies(rule, input))
+      .flatMap((rule) => teamRuleFindings(rule, ctx).map((finding) => ({ ...finding, ruleId: rule.id, severity: rule.severity }))),
+  ];
 
   // Highest severity first, then in reading order.
   return findings.sort(
@@ -417,4 +438,18 @@ export function applyFix(fields: Record<string, string>, finding: Finding): Reco
   const text = fields[finding.field] ?? "";
   const from = finding.replaceStart ?? finding.start;
   return { ...fields, [finding.field]: text.slice(0, from) + finding.replacement + text.slice(finding.replaceEnd ?? finding.end) };
+}
+
+// Runs one team rule against sample text, for the "Test it" box when compliance writes a rule.
+export function testTeamRule(rule: TeamRule, sample: string): Finding[] {
+  const ctx: Ctx = {
+    product: "personal_loan",
+    channel: "landing_page",
+    fields: { copy: sample },
+    rates: { aprMin: 0, aprMax: 0, termMinMonths: null, termMaxMonths: null, introAprMonths: null, nmlsId: null, autopayDiscount: null, originationFeeMin: null, originationFeeMax: null, ratesAsOf: null, rateAssumptions: null },
+    allText: sample,
+    mainField: "copy",
+  };
+  if (!sample.trim()) return [];
+  return teamRuleFindings(rule, ctx).map((finding) => ({ ...finding, ruleId: rule.id, severity: rule.severity }));
 }

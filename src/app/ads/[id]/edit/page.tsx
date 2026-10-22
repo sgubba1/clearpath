@@ -5,6 +5,7 @@ import { CHANNELS_FOR, submissionRef } from "@/lib/labels";
 import { getOwnedAd } from "@/lib/queries";
 import { aiReviewEnabled } from "@/lib/ai-review";
 import { getRateSheet } from "@/lib/rate-sheet";
+import { getTeamRules } from "@/lib/team-rules";
 import { getRule } from "@/lib/rules/catalog";
 import { requireRole } from "@/lib/session";
 
@@ -15,6 +16,7 @@ export default async function EditAdPage({ params }: PageProps<"/ads/[id]/edit">
   if (!ad) notFound();
   if (ad.status !== "draft" && ad.status !== "changes_requested") redirect(`/ads/${ad.id}`);
 
+  await getTeamRules();
   const isAffiliate = identity.role === "affiliate";
   const isRevision = ad.status === "changes_requested";
   const version = ad.versions[ad.versions.length - 1];
@@ -39,6 +41,7 @@ export default async function EditAdPage({ params }: PageProps<"/ads/[id]/edit">
       />
       <AdForm
         rateSheet={await getRateSheet()}
+        teamRules={await getTeamRules()}
         aiEnabled={aiReviewEnabled()}
         draftId={ad.id}
         channels={CHANNELS_FOR[isAffiliate ? "affiliate" : "in_house"]}

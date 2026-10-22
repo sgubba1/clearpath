@@ -9,6 +9,7 @@ import { submissionRef } from "@/lib/labels";
 import { getNextInQueue, getReviewItem } from "@/lib/queries";
 import { getRule } from "@/lib/rules/catalog";
 import { getIdentity } from "@/lib/session";
+import { getTeamRules } from "@/lib/team-rules";
 
 async function requireReviewer(): Promise<Identity> {
   const identity = await getIdentity();
@@ -55,6 +56,7 @@ export async function decide(_prev: DecisionState, formData: FormData): Promise<
   if (!(decision in DECISIONS)) return { errors: {}, message: "Choose approve, request changes or reject." };
 
   const item = await getReviewItem(id);
+  await getTeamRules();
   if (!item || (item.status !== "submitted" && item.status !== "in_review")) {
     return { errors: {}, message: "This ad is no longer waiting for review. It may have been decided already." };
   }

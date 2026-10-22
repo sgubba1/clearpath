@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/page-header";
 import { EXAMPLE_ADS } from "@/lib/example-ads";
 import { aiReviewEnabled } from "@/lib/ai-review";
 import { getRateSheet } from "@/lib/rate-sheet";
+import { getTeamRules } from "@/lib/team-rules";
 import { CHANNELS_FOR } from "@/lib/labels";
 import { requireRole } from "@/lib/session";
 
@@ -25,6 +26,7 @@ export default async function NewAdPage() {
       />
       <AdForm
         rateSheet={await getRateSheet()}
+        teamRules={await getTeamRules()}
         aiEnabled={aiReviewEnabled()}
         examples={EXAMPLE_ADS.filter((example) => example.for === (isAffiliate ? "affiliate" : "in_house"))}
         channels={channels}

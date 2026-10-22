@@ -12,6 +12,7 @@ import { CHANNEL_LABELS, PRODUCT_LABELS, submissionRef } from "@/lib/labels";
 import { getReviewItem } from "@/lib/queries";
 import { getRateSheet } from "@/lib/rate-sheet";
 import { requireRole } from "@/lib/session";
+import { getTeamRules } from "@/lib/team-rules";
 
 export async function generateMetadata({ params }: PageProps<"/queue/[id]">): Promise<Metadata> {
   return { title: `${submissionRef(Number((await params).id))} · Review` };
@@ -23,6 +24,7 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/q
   const item = await getReviewItem(Number((await params).id));
   if (!item) notFound();
   const query = await searchParams;
+  await getTeamRules();
 
   const version = item.versions[item.versions.length - 1];
   const rates = (await getRateSheet())[item.product];
