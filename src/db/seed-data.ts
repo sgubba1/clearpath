@@ -433,23 +433,29 @@ export const SUBMISSIONS: SeedSubmission[] = [
 // [product, channel, submitter, reviewer, days ago first submitted, hours to decision, v1 issues, outcome]
 type HistoryRow = [Product, Channel, SubmitterKey, ReviewerKey, number, number, RuleId[], "approved" | "rejected", string];
 
+// In-house ads show the subtle misses real marketers make; partners account for the blatant claims.
+// The older half is slower with more rounds, the recent half faster: the trend the metrics compare.
 export const HISTORY: HistoryRow[] = [
-  ["personal_loan", "email", "maya", "dev", 29, 52, ["closed-end-trigger-terms"], "approved", "Refinance check-in email"],
-  ["credit_card", "social", "sam", "hannah", 28, 20, [], "approved", "Cash back intro social"],
+  ["personal_loan", "email", "maya", "dev", 29, 70, ["fee-claim", "lowest-rate-conditions"], "approved", "Refinance check-in email"],
+  ["credit_card", "social", "sam", "hannah", 28, 40, [], "approved", "Cash back intro social"],
   ["personal_loan", "affiliate", "fundfinder", "marcus", 27, 96, ["guaranteed-approval", "credit-impact"], "rejected", "Bad credit loans listing"],
-  ["mortgage_prequal", "email", "lena", "dev", 26, 74, ["rate-not-offered"], "approved", "Rate drop alert"],
+  ["mortgage_prequal", "email", "lena", "dev", 26, 74, ["mortgage-rate-basis"], "approved", "Rate drop alert"],
   ["credit_card", "affiliate", "cardcompass", "hannah", 24, 110, ["open-end-trigger-terms", "affiliate-implies-lender"], "approved", "Card comparison widget"],
-  ["personal_loan", "sms", "sam", "dev", 22, 30, [], "approved", "Wedding loans SMS"],
+  ["personal_loan", "sms", "sam", "dev", 22, 52, ["funding-speed"], "approved", "Wedding loans SMS"],
   ["credit_card", "email", "maya", "marcus", 21, 70, ["preapproved-claim"], "approved", "Card upgrade offer"],
   ["personal_loan", "affiliate", "brightpath", "dev", 19, 46, ["closed-end-trigger-terms"], "approved", "Loan calculator placement"],
-  ["mortgage_prequal", "social", "lena", "hannah", 17, 26, [], "approved", "First-time buyer social"],
-  ["personal_loan", "email", "sam", "marcus", 15, 58, ["credit-impact"], "approved", "Medical bills email"],
-  ["credit_card", "affiliate", "cardcompass", "dev", 13, 80, ["guaranteed-approval"], "rejected", "Instant approval cards list"],
+  ["personal_loan", "email", "sam", "marcus", 18, 64, ["credit-impact", "savings-claim"], "approved", "Medical bills email"],
+  ["mortgage_prequal", "social", "lena", "hannah", 17, 48, ["terms-off-ad"], "approved", "First-time buyer social"],
+  ["personal_loan", "landing_page", "maya", "dev", 16, 58, ["lowest-rate-conditions", "funding-speed"], "approved", "Debt payoff landing page"],
+  ["credit_card", "affiliate", "cardcompass", "dev", 13, 40, ["guaranteed-approval"], "rejected", "Instant approval cards list"],
   ["credit_card", "social", "maya", "hannah", 11, 18, [], "approved", "Travel spending social"],
-  ["personal_loan", "landing_page", "sam", "dev", 9, 44, ["rate-not-offered"], "approved", "Auto repair loan page"],
+  ["personal_loan", "landing_page", "sam", "dev", 9, 30, ["fee-claim"], "approved", "Auto repair loan page"],
   ["mortgage_prequal", "paid_search", "lena", "marcus", 7, 22, [], "approved", "Prequal search refresh"],
-  ["personal_loan", "affiliate", "brightpath", "hannah", 6, 40, [], "approved", "Best loans of the month"],
-  ["credit_card", "email", "maya", "dev", 4, 30, ["open-end-trigger-terms"], "approved", "Balance check reminder"],
+  ["personal_loan", "affiliate", "brightpath", "hannah", 6, 28, [], "approved", "Best loans of the month"],
+  ["personal_loan", "email", "maya", "dev", 5, 26, ["lowest-rate-conditions"], "approved", "Home improvement email"],
+  ["credit_card", "email", "maya", "dev", 4, 24, [], "approved", "Balance check reminder"],
+  ["personal_loan", "social", "sam", "hannah", 3, 20, ["funding-speed"], "approved", "Quick cash social"],
+  ["mortgage_prequal", "email", "lena", "marcus", 2, 18, [], "approved", "Rate watch email"],
 ];
 
 // Compliant copy per product, and the phrase that triggers each rule, used to build history versions.
@@ -475,12 +481,17 @@ export const SHORT_COPY: Record<Product, string> = {
 };
 
 export const VIOLATION_PHRASES: Partial<Record<RuleId, string>> = {
+  "fee-claim": "No fees.",
+  "lowest-rate-conditions": "Rates as low as 8.99% APR.",
+  "funding-speed": "Funds as soon as tomorrow.",
+  "credit-impact": "Apply with no impact to your credit score.",
+  "savings-claim": "Save $2,400 on interest.",
+  "mortgage-rate-basis": "Today's rate: 6.50% APR.",
+  "terms-off-ad": "Full terms in bio.",
+  "preapproved-claim": "You're preapproved.",
   "guaranteed-approval": "Approval guaranteed.",
-  "credit-impact": "No credit check required.",
   "closed-end-trigger-terms": "Payments as low as $149/month.",
   "open-end-trigger-terms": "0% intro APR!",
-  "rate-not-offered": "Rates as low as 5.49% APR.",
-  "preapproved-claim": "You're preapproved.",
   "affiliate-implies-lender": "We are the lender.",
 };
 

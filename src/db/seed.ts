@@ -227,9 +227,10 @@ function historyToSubmission([product, channel, submitter, reviewer, daysAgo, ho
   const decidedHoursAgo = firstHoursAgo - hoursToDecision;
   const issueText = issues.map((rule) => VIOLATION_PHRASES[rule]).join(" ");
 
-  // Trigger-term issues only show up when the rate terms are missing, so drop them from round 1.
-  const tripsTriggerRule = issues.some((rule) => rule === "closed-end-trigger-terms" || rule === "open-end-trigger-terms");
-  const v1Copy = issueText ? `${issueText} ${(tripsTriggerRule ? COPY_WITHOUT_TERMS : CLEAN_COPY)[product]}` : undefined;
+  // Rules about missing terms only fire when the terms are absent, so round 1 drops them; texts use the short copy.
+  const needsBareCopy = issues.some((rule) => ["closed-end-trigger-terms", "open-end-trigger-terms", "mortgage-rate-basis"].includes(rule));
+  const base = channel === "sms" ? SHORT_COPY[product] : (needsBareCopy ? COPY_WITHOUT_TERMS : CLEAN_COPY)[product];
+  const v1Copy = issueText ? `${issueText} ${base}` : undefined;
   const v1: SeedVersion = {
     hoursAgo: firstHoursAgo,
     fields: fieldsFor(channel, product, submitter, v1Copy),
