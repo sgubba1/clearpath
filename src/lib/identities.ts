@@ -1,6 +1,6 @@
 // Demo identities for the role switcher. There is no real auth in this prototype:
 // picking an identity sets a cookie, and every page reads it to decide what to show.
-// All people and partners are fictional.
+// All people and partners are made up.
 
 export type Role = "marketer" | "affiliate" | "reviewer" | "manager";
 
@@ -29,7 +29,7 @@ export const IDENTITIES = [
     name: "Jordan Reyes",
     role: "affiliate",
     roleLabel: "Affiliate partner",
-    organization: "BrightPath Rates (fictional partner)",
+    organization: "BrightPath Rates",
     summary: "A comparison site promoting ClearPath offers. Sees only its own ads.",
     home: "/ads",
   },

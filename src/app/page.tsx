@@ -76,7 +76,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
       </ul>
 
       <p className="mt-8 text-xs text-muted-foreground">
-        ClearPath Financial is a fictional company. All people, partners and data are made up, and the rule library is illustrative, not legal advice.
+        ClearPath Financial is not a real company. All people, partners and data are made up, and the rule library is illustrative, not legal advice.
       </p>
     </main>
   );

@@ -6,7 +6,7 @@ export function ratesAsOfDate(now = new Date()) {
   return date.toISOString().slice(0, 10);
 }
 
-// Fictional reference data. The seed loads these into the database.
+// Made-up reference data. The seed loads these into the database.
 
 export const RATE_SHEET: (typeof rateSheet.$inferInsert)[] = [
   {

@@ -2,7 +2,7 @@ import type { Channel, Product, Status } from "@/db/schema";
 import type { RuleId } from "@/lib/rules/catalog";
 import { ratesAsOfDate } from "@/lib/reference-data";
 
-// Demo data. Everything here is fictional: people, partners, URLs, NMLS IDs and addresses.
+// Demo data. Everything here is made up: people, partners, URLs, NMLS IDs and addresses.
 // Times are relative to when the seed runs, so the demo always looks current.
 
 export type Person = {
@@ -63,7 +63,7 @@ export type SeedSubmission = {
 };
 
 const FOOTER =
-  "You're receiving this because you're a ClearPath customer. Unsubscribe: clearpath.example.com/unsubscribe · ClearPath Financial, 100 Example Way, Suite 400, Columbus, OH 43215 (fictional address)";
+  "You're receiving this because you're a ClearPath customer. Unsubscribe: clearpath.example.com/unsubscribe · ClearPath Financial, 100 Example Way, Suite 400, Columbus, OH 43215";
 const NMLS = "ClearPath Financial, NMLS ID #2045817.";
 const [asOfY, asOfM, asOfD] = ratesAsOfDate().split("-").map(Number);
 const AS_OF = new Date(asOfY, asOfM - 1, asOfD).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });

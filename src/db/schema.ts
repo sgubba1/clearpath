@@ -41,7 +41,7 @@ export const partners = pgTable("partners", {
   active: boolean("active").notNull().default(true),
 }).enableRLS();
 
-// ClearPath's fictional product terms; the pre-check compares advertised terms against this.
+// ClearPath's made-up product terms; the pre-check compares advertised terms against this.
 export const rateSheet = pgTable("rate_sheet", {
   product: productEnum("product").primaryKey(),
   aprMin: doublePrecision("apr_min").notNull(),

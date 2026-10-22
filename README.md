@@ -4,7 +4,7 @@
 
 **Live demo: https://clearpath-one-ebon.vercel.app**
 
-A working prototype for the compliance marketing team at ClearPath Financial, a fictional national consumer lender (personal loans, credit cards and mortgage prequalification) whose ad review currently runs on Excel and email.
+A working prototype for the compliance marketing team at ClearPath Financial, a hypothetical national consumer lender (personal loans, credit cards and mortgage prequalification) whose ad review currently runs on Excel and email.
 
 ![Reviewer view: the ad on the left with flagged text highlighted, flags and the decision on the right](.github/screenshots/review.png)
 
@@ -100,7 +100,7 @@ It also catches copy that *became* wrong when the rate sheet changed. The rule l
 - **Products:** personal loans and mortgage prequalification are closed-end credit; the credit card is open-end, so different Reg Z advertising rules apply.
 - **Risk score:** unresolved flags weighted high 3, medium 2, low 1, plus 2 for affiliate submitters, 1 for mortgage, and 2 when launch is within three days.
 - **Review target:** a first decision within 48 hours of submission.
-- **Rate sheet (fictional):**
+- **Rate sheet (made up for the demo):**
   - personal loans: 8.99%–35.99% APR, with the lowest rate requiring a 0.50% autopay discount; 24–60 month terms; a 0%–8% origination fee; funds the next business day after approval.
   - card: 19.99%–29.99% variable APR, 0% intro APR for 12 months, no annual fee.
   - mortgage: 6.42%–7.85% APR, shown with its date and assumptions.
@@ -163,7 +163,7 @@ Requirements: Node 20+ and a Postgres database (the demo uses Supabase as plain 
 npm install
 cp .env.example .env      # add DATABASE_URL (and optionally DIRECT_URL, ANTHROPIC_API_KEY)
 npm run db:push           # create the tables
-npm run db:seed           # load the fictional demo data (also resets it)
+npm run db:seed           # load the demo data (also resets it)
 npm run dev               # http://localhost:3000
 ```
 
@@ -190,4 +190,4 @@ npm run dev               # http://localhost:3000
 
 ## Disclaimer
 
-ClearPath Financial is a fictional company. All people, partners, rates, NMLS IDs, addresses and ads are made up. The rule library is illustrative, paraphrases its sources with links, and is not legal advice.
+ClearPath Financial is not a real company. All people, partners, rates, NMLS IDs, addresses and ads are made up. The rule library is illustrative, paraphrases its sources with links, and is not legal advice.
