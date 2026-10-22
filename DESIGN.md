@@ -94,6 +94,7 @@ Compliance also owns the rules directly: reviewers and managers can add team rul
 ## What I left out
 
 - **Real authentication,** replaced by the role switcher for now.
+- **State-by-state rules.** ClearPath lends nationally, but the library covers federal rules plus one state-style example (the NMLS ID on mortgage ads).
 - **More channels,** such as influencer scripts and direct mail; email, SMS, social and partner placements got depth first.
 - **Monitoring live partner pages** after approval, to catch copy that changes.
 - **Checking text inside images and video.**
