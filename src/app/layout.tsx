@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ClearPath Compliance Review",
+  title: { default: "ClearPath Compliance Review", template: "%s · ClearPath" },
   description: "Pre-check, risk-sorted review and audit trail for consumer-finance marketing.",
 };
 

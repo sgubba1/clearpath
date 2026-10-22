@@ -82,3 +82,31 @@ export async function getOwnedAd(identity: Identity, id: number) {
     },
   });
 }
+
+// Everything the reviewer needs on one screen: the ad, every round with its flags and
+// comments, the activity log and the product's rate terms.
+export async function getReviewItem(id: number) {
+  if (!Number.isInteger(id)) return undefined;
+  return getDb().query.submissions.findFirst({
+    where: eq(submissions.id, id),
+    with: {
+      partner: true,
+      versions: {
+        orderBy: (v, { asc }) => [asc(v.number)],
+        with: {
+          flags: { orderBy: (f, { asc }) => [asc(f.id)] },
+          comments: { orderBy: (c, { asc }) => [asc(c.createdAt)] },
+        },
+      },
+      auditEvents: { orderBy: (e, { asc }) => [asc(e.createdAt), asc(e.id)] },
+    },
+  });
+}
+
+export type ReviewItem = NonNullable<Awaited<ReturnType<typeof getReviewItem>>>;
+
+// The next item a reviewer should open after deciding on one.
+export async function getNextInQueue(excludeId: number) {
+  const queue = await getQueue();
+  return queue.find((item) => item.id !== excludeId);
+}
