@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "db:push": "drizzle-kit push",
-    "db:seed": "tsx scripts/seed.ts"
+    "db:seed": "tsx scripts/seed.ts",
+    "test:rules": "tsx scripts/test-rules.ts"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
