@@ -50,7 +50,7 @@ The product is one connected loop. Each step uses what the previous one produced
 
 ![Pre-check: flagged phrases highlighted in the email, issues with suggested changes alongside](.github/screenshots/precheck.png)
 
-**2. Risk-sorted review (Dev).** The queue is ordered by the risk those flags create, then by time waiting, with a warning past the 48-hour target. The review screen shows the ad in the shape of its channel (an email, a text bubble, a social post or a partner placement) with the same flags highlighted. The submitter's reason, the product's rate-sheet terms and a judgment-call checklist sit alongside. Comments attach to specific flags. After a decision, the next riskiest ad opens.
+**2. Risk-sorted review (Dev).** The queue is ordered by the risk those flags create, then by time waiting, with a warning past the 48-hour target. The review screen shows the ad in the shape of its channel (an email, a text bubble, a social post or a partner placement) with the same flags highlighted. The submitter's reason, the product's rate-sheet terms and a judgment-call checklist sit alongside; for partner ads, a one-line track record shows how that partner's recent ads went. A "Why high risk?" window explains each factor behind the ad's risk level in plain language. Comments attach to specific flags. After a decision, the next riskiest ad opens.
 
 **3. Rounds that take seconds (everyone).** A sent-back ad is revised in the same form, with the feedback beside it and the pre-check running again. The reviewer sees "1 of 1 round 1 flag fixed", the submitter's note and a word-level diff instead of the whole ad.
 

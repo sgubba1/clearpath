@@ -135,3 +135,25 @@ export async function getNextInQueue(excludeId: number) {
   const queue = await getQueue();
   return queue.find((item) => item.id !== excludeId);
 }
+
+// A partner's recent history, for reviewers judging one of their ads. Excludes the ad being reviewed.
+export async function getPartnerTrackRecord(partnerId: string, excludeId: number, days = 90) {
+  const since = new Date(Date.now() - days * 86_400_000);
+  const ads = await getDb().query.submissions.findMany({
+    where: and(eq(submissions.partnerId, partnerId), ne(submissions.id, excludeId), ne(submissions.status, "draft")),
+    with: { versions: { orderBy: (v, { asc }) => [asc(v.number)], with: { flags: true } } },
+  });
+  const recent = ads.filter((ad) => ad.firstSubmittedAt && ad.firstSubmittedAt >= since);
+  const issueCounts = new Map<string, number>();
+  for (const ad of recent) for (const flag of ad.versions[0]?.flags ?? []) issueCounts.set(flag.ruleId, (issueCounts.get(flag.ruleId) ?? 0) + 1);
+  const topIssue = [...issueCounts.entries()].sort((a, b) => b[1] - a[1])[0];
+  return {
+    days,
+    ads: recent.length,
+    flagged: recent.filter((ad) => (ad.versions[0]?.flags.length ?? 0) > 0).length,
+    sentBack: recent.filter((ad) => ad.versions.length > 1 || ad.status === "changes_requested").length,
+    rejected: recent.filter((ad) => ad.status === "rejected").length,
+    approvedFirstRound: recent.filter((ad) => ad.status === "approved" && ad.versions.length === 1).length,
+    topIssue: topIssue ? { ruleId: topIssue[0], count: topIssue[1] } : undefined,
+  };
+}

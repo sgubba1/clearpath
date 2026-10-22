@@ -5,6 +5,7 @@ import { RiskBadge, StatusBadge, Tag } from "@/components/badges";
 import { requestRateUpdate } from "@/app/queue/actions";
 import { ClaimOnOpen } from "@/components/claim-on-open";
 import { Button } from "@/components/ui/button";
+import { PartnerTrackRecord } from "@/components/partner-track-record";
 import { ReviewWorkspace } from "@/components/review-workspace";
 import { RiskExplainer } from "@/components/risk-explainer";
 import { RoundChanges } from "@/components/round-changes";
@@ -13,7 +14,7 @@ import { describeEvent } from "@/lib/activity";
 import { aiReviewEnabled } from "@/lib/ai-review";
 import { formatDate, launchLabel, timeAgo, waitingFor } from "@/lib/format";
 import { CHANNEL_LABELS, PRODUCT_LABELS, submissionRef } from "@/lib/labels";
-import { getReviewItem } from "@/lib/queries";
+import { getPartnerTrackRecord, getReviewItem } from "@/lib/queries";
 import { getRateSheet } from "@/lib/rate-sheet";
 import { getRule } from "@/lib/rules/catalog";
 import { precheck } from "@/lib/rules/engine";
@@ -62,6 +63,7 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/q
     product: item.product,
     launchDate: item.launchDate,
   });
+  const partnerRecord = item.partnerId ? await getPartnerTrackRecord(item.partnerId, item.id) : undefined;
   const submitter = item.partner ? `${item.submitterName}, ${item.partner.name}` : item.submitterName;
 
   return (
@@ -119,6 +121,8 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/q
           </p>
         )}
       </div>
+
+      {item.partner && partnerRecord && <PartnerTrackRecord partnerName={item.partner.name} record={partnerRecord} />}
 
       {sinceSubmission.length > 0 && (
         <section aria-labelledby="since-title" className="rounded-xl border border-amber-300 bg-amber-50 p-5">
