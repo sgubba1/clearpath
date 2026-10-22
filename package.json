@@ -12,6 +12,7 @@
     "test:rules": "tsx scripts/test-rules.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.1.0",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.0",
     "diff": "^9.0.0",
