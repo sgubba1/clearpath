@@ -67,8 +67,10 @@ export async function getTeamMetrics(now = new Date()) {
     .filter((item) => item.status === "approved")
     .flatMap((item) => {
       const version = item.versions[item.versions.length - 1];
+      // Only rates that went wrong after approval; a rate the reviewer accepted at the time isn't news.
+      const flaggedAtSubmission = new Set(version.flags.map((flag) => `${flag.ruleId}|${flag.matchText}`));
       const stale = precheck({ product: item.product, channel: item.channel, fields: version.fields }, rateSheet).filter(
-        (finding) => finding.ruleId === "rate-not-offered",
+        (finding) => finding.ruleId === "rate-not-offered" && !flaggedAtSubmission.has(`${finding.ruleId}|${finding.matchText}`),
       );
       return stale.length ? [{ id: item.id, campaign: item.campaign, submitterName: item.submitterName, decidedAt: item.decidedAt, detail: stale[0].detail, matchText: stale[0].matchText }] : [];
     });
