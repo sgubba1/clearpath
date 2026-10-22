@@ -69,17 +69,10 @@ export const SEVERITY_BADGE: Record<Severity, string> = {
   low: "bg-sky-100 text-sky-900",
 };
 
-// Plain-language reasons behind a risk score. "compact" is for scanning the queue: just the flags,
-// since partner status and launch timing are already visible on the row (hover the badge for the
-// arithmetic). The full form, with points, is for the review screen.
-export function RiskReasons({ parts, compact = false, className }: { parts: RiskPart[]; compact?: boolean; className?: string }) {
-  if (!compact) {
-    return (
-      <span className={cn("block text-xs text-muted-foreground", className)}>
-        {parts.length === 0 ? "No open flags or risk factors" : parts.map((part) => `${part.label} +${part.points}`).join(" · ")}
-      </span>
-    );
-  }
+// The flag summary under each queue row ("6 flags, 5 high-severity"). Partner status and launch
+// timing are already visible on the row; the risk label's tooltip and the review screen's
+// explainer give the full score.
+export function RiskReasons({ parts, className }: { parts: RiskPart[]; className?: string }) {
   const flagCount = parts.reduce((sum, part) => sum + (part.kind === "flags" ? (part.count ?? 0) : 0), 0);
   const highCount = parts.find((part) => part.kind === "flags" && part.severity === "high")?.count ?? 0;
   const plural = (n: number) => (n === 1 ? "" : "s");

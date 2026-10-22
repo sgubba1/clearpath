@@ -2,7 +2,7 @@ import type { Product, Severity } from "@/db/schema";
 
 // Assumption, stated in the README: risk is the sum of unresolved flag severities, plus
 // bumps for the riskiest submitters, products and timelines. Reviewers start at the top.
-const SEVERITY_POINTS: Record<Severity, number> = { high: 3, medium: 2, low: 1 };
+export const SEVERITY_POINTS: Record<Severity, number> = { high: 3, medium: 2, low: 1 };
 const AFFILIATE_BUMP = 2;
 const MORTGAGE_BUMP = 1;
 const RUSH_BUMP = 2;

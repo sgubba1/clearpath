@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { RiskBadge, RiskReasons, StatusBadge, Tag } from "@/components/badges";
+import { RiskBadge, StatusBadge, Tag } from "@/components/badges";
 import { requestRateUpdate } from "@/app/queue/actions";
 import { ClaimOnOpen } from "@/components/claim-on-open";
 import { Button } from "@/components/ui/button";
 import { ReviewWorkspace } from "@/components/review-workspace";
+import { RiskExplainer } from "@/components/risk-explainer";
 import { RoundChanges } from "@/components/round-changes";
 import { TimeAgo } from "@/components/time-ago";
 import { describeEvent } from "@/lib/activity";
@@ -80,7 +81,12 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/q
         <div className="flex flex-wrap items-start justify-between gap-3">
           <h1 className="text-2xl font-semibold tracking-tight">{item.campaign}</h1>
           <div className="flex items-center gap-2">
-            {waitingForReview && <RiskBadge score={risk.score} parts={risk.parts} />}
+            {waitingForReview && (
+              <>
+                <RiskExplainer score={risk.score} parts={risk.parts} />
+                <RiskBadge score={risk.score} parts={risk.parts} />
+              </>
+            )}
             <StatusBadge status={item.status} />
           </div>
         </div>
@@ -103,12 +109,6 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/q
             </>
           )}
         </div>
-        {waitingForReview && (
-          <p className="text-sm">
-            <span className="font-medium">Why this risk level: </span>
-            <RiskReasons parts={risk.parts} className="inline text-sm" />
-          </p>
-        )}
         {!waitingForReview && (
           <p className="rounded-lg bg-muted/60 px-4 py-2.5 text-sm">
             {item.status === "draft"

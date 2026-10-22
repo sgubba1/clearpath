@@ -63,7 +63,7 @@ export default async function QueuePage({ searchParams }: PageProps<"/queue">) {
                       {item.submitterType === "affiliate" && <Tag tone="partner">Affiliate</Tag>}
                       {item.currentVersion > 1 && <Tag>Round {item.currentVersion}</Tag>}
                     </div>
-                    <RiskReasons parts={item.riskParts} compact />
+                    <RiskReasons parts={item.riskParts} />
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-sm sm:justify-end">
                     <span className={isRush ? "font-medium text-foreground" : "text-muted-foreground"} title={formatDate(item.launchDate)}>
