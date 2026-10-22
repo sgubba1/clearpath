@@ -4,8 +4,21 @@ import type { Channel, Product, Severity } from "@/db/schema";
 // there for reviewers who want it. Detection logic lives in the pre-check engine and
 // refers to rules by id. Illustrative only, not legal advice.
 
+// Groups for the rule library, in the order they're shown.
+export const RULE_CATEGORIES = [
+  { id: "rates-terms", label: "Rates and terms", description: "APRs, fees, terms and the conditions behind them, checked against the rate sheet." },
+  { id: "approval-credit", label: "Approval and credit claims", description: "What the ad implies about getting approved and the effect on someone's credit." },
+  { id: "promises", label: "Promises and claims", description: "Speed, savings and ranking claims that need conditions or a basis." },
+  { id: "disclosures", label: "Required disclosures", description: "Text an ad must include for its product or channel." },
+  { id: "partners", label: "Partner placements", description: "Extra rules for comparison sites and lead generators." },
+  { id: "brand", label: "Brand and product language", description: "How ClearPath and its products are described." },
+] as const;
+
+export type RuleCategory = (typeof RULE_CATEGORIES)[number]["id"];
+
 export type RuleMeta = {
   id: string;
+  category: RuleCategory;
   title: string; // plain-language name shown on the flag
   severity: Severity;
   regulation: string; // short citation for reviewers
@@ -24,6 +37,7 @@ const ALL_CHANNELS = "all" as const;
 export const RULES = [
   {
     id: "guaranteed-approval",
+    category: "approval-credit",
     title: "Promises approval",
     severity: "high",
     regulation: "UDAAP / FTC Act §5 (deceptive claims)",
@@ -36,6 +50,7 @@ export const RULES = [
   },
   {
     id: "credit-impact",
+    category: "approval-credit",
     title: "Overstates how little applying affects credit",
     severity: "high",
     regulation: "UDAAP / FTC Act §5 (deceptive claims)",
@@ -48,6 +63,7 @@ export const RULES = [
   },
   {
     id: "closed-end-trigger-terms",
+    category: "rates-terms",
     title: "Payment or term mentioned without the APR",
     severity: "high",
     regulation: "Reg Z §1026.24(d) (closed-end triggering terms)",
@@ -60,6 +76,7 @@ export const RULES = [
   },
   {
     id: "open-end-trigger-terms",
+    category: "rates-terms",
     title: "Card rate or fee mentioned without full rate terms",
     severity: "high",
     regulation: "Reg Z §1026.16(b) (open-end triggering terms)",
@@ -72,6 +89,7 @@ export const RULES = [
   },
   {
     id: "rate-not-offered",
+    category: "rates-terms",
     title: "Rate isn't on the current rate sheet",
     severity: "high",
     regulation: "Reg Z §1026.24(a) (advertise only terms actually available)",
@@ -85,6 +103,7 @@ export const RULES = [
   },
   {
     id: "preapproved-claim",
+    category: "approval-credit",
     title: "Says \"pre-approved\" where it means prequalified",
     severity: "high",
     regulation: "FCRA §615(d) (prescreened offers)",
@@ -98,6 +117,7 @@ export const RULES = [
   },
   {
     id: "missing-nmls",
+    category: "disclosures",
     title: "Mortgage ad missing the NMLS ID",
     severity: "medium",
     regulation: "State licensing rules (e.g. 10 VAC 5-160-60)",
@@ -109,6 +129,7 @@ export const RULES = [
   },
   {
     id: "affiliate-implies-lender",
+    category: "partners",
     title: "Partner implies it's the lender or guarantees the best rate",
     severity: "high",
     regulation: "CFPB lead-generator enforcement (UDAAP)",
@@ -122,6 +143,7 @@ export const RULES = [
   },
   {
     id: "sms-opt-out",
+    category: "disclosures",
     title: "Text message has no opt-out",
     severity: "medium",
     regulation: "TCPA (example check, not verified)",
@@ -134,6 +156,7 @@ export const RULES = [
   },
   {
     id: "email-unsubscribe",
+    category: "disclosures",
     title: "Email footer missing unsubscribe link or mailing address",
     severity: "medium",
     regulation: "CAN-SPAM (example check, not verified)",
@@ -146,6 +169,7 @@ export const RULES = [
   },
   {
     id: "lowest-rate-conditions",
+    category: "rates-terms",
     title: "Lowest rate shown without its conditions",
     severity: "medium",
     regulation: "Reg Z §1026.24(a); UDAAP (net impression)",
@@ -159,6 +183,7 @@ export const RULES = [
   },
   {
     id: "fee-claim",
+    category: "rates-terms",
     title: "Says \"no fees\" but a fee applies",
     severity: "high",
     regulation: "UDAAP / FTC Act §5; Reg Z finance charge disclosure",
@@ -171,6 +196,7 @@ export const RULES = [
   },
   {
     id: "funding-speed",
+    category: "promises",
     title: "Promises funding speed without conditions",
     severity: "medium",
     regulation: "UDAAP / FTC Act §5 (net impression)",
@@ -183,6 +209,7 @@ export const RULES = [
   },
   {
     id: "savings-claim",
+    category: "promises",
     title: "Specific savings claim with no basis shown",
     severity: "medium",
     regulation: "FTC Act §5 (substantiation)",
@@ -195,6 +222,7 @@ export const RULES = [
   },
   {
     id: "terms-off-ad",
+    category: "disclosures",
     title: "Required terms pushed outside the ad",
     severity: "medium",
     regulation: "Reg Z §1026.24 (clear and conspicuous disclosure)",
@@ -207,6 +235,7 @@ export const RULES = [
   },
   {
     id: "mortgage-rate-basis",
+    category: "rates-terms",
     title: "Mortgage rate shown without its date and assumptions",
     severity: "medium",
     regulation: "MAP Rule (Reg N) / Reg Z §1026.24",
@@ -219,6 +248,7 @@ export const RULES = [
   },
   {
     id: "ranking-claim",
+    category: "promises",
     title: "Ranking or \"best\" claim without a source",
     severity: "medium",
     regulation: "FTC Act §5 (substantiation)",
@@ -230,6 +260,7 @@ export const RULES = [
   },
   {
     id: "affiliate-disclosure",
+    category: "partners",
     title: "Partner doesn't say it's paid for referrals",
     severity: "medium",
     regulation: "FTC Endorsement Guides (material connections)",
@@ -244,12 +275,48 @@ export const RULES = [
 
 export type RuleId = (typeof RULES)[number]["id"];
 
+// A rule compliance added in the app. Its id is "team-<n>" so it never collides with built-ins.
+export type TeamRule = RuleMeta & {
+  team: {
+    kind: "phrases" | "required";
+    phrases: string[];
+    requiredText: string | null;
+    replacement: string | null;
+    active: boolean;
+    createdByName: string;
+    createdAt: string;
+  };
+};
+
 const byId = new Map<string, RuleMeta>(RULES.map((rule) => [rule.id, rule]));
+const teamById = new Map<string, TeamRule>();
+
+// Team rules come from the database; server code and the browser both register them before
+// looking rules up, so flags from team rules explain themselves like built-in ones.
+export function registerTeamRules(rules: TeamRule[]) {
+  for (const rule of rules) teamById.set(rule.id, rule);
+}
 
 export function getRule(id: string): RuleMeta {
-  const rule = byId.get(id);
-  if (!rule) throw new Error(`Unknown rule: ${id}`);
-  return rule;
+  const rule = byId.get(id) ?? teamById.get(id);
+  if (rule) return rule;
+  // Should not happen (team rules are turned off, not deleted), but never break a page over it.
+  return {
+    id,
+    category: "brand",
+    title: "Team rule",
+    severity: "medium",
+    regulation: "Team rule",
+    sourceUrl: "",
+    products: "all",
+    channels: "all",
+    whyItMatters: "Added by the compliance team.",
+    fixHint: "Ask compliance how to fix this.",
+  };
+}
+
+export function isTeamRule(rule: RuleMeta): rule is TeamRule {
+  return "team" in rule;
 }
 
 // Judgment calls stay with the reviewer as a checklist rather than automated verdicts.
