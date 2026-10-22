@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { RiskBadge, StatusBadge, Tag } from "@/components/badges";
 import { ClaimOnOpen } from "@/components/claim-on-open";
 import { ReviewWorkspace } from "@/components/review-workspace";
+import { RoundChanges } from "@/components/round-changes";
 import { describeEvent } from "@/lib/activity";
 import { launchLabel, timeAgo, waitingFor } from "@/lib/format";
 import { CHANNEL_LABELS, PRODUCT_LABELS, submissionRef } from "@/lib/labels";
@@ -82,6 +83,10 @@ export default async function ReviewPage({ params, searchParams }: PageProps<"/q
           </p>
         )}
       </div>
+
+      {item.versions.length > 1 && (
+        <RoundChanges channel={item.channel} previous={item.versions[item.versions.length - 2]} current={version} />
+      )}
 
       <ReviewWorkspace
         key={version.id}
