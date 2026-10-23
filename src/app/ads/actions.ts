@@ -247,3 +247,43 @@ function isUrl(value: string) {
     return false;
   }
 }
+
+// Pulls a submitted ad back for editing while no reviewer has opened it yet. Once review starts it
+// stays locked, so a reviewer never reviews copy that's changing underneath them.
+export async function withdrawForEdit(id: number) {
+  const identity = await getIdentity();
+  if (!identity || (identity.role !== "marketer" && identity.role !== "affiliate")) redirect("/");
+  const db = getDb();
+  const ad = await db.query.submissions.findFirst({ where: and(eq(submissions.id, id), ownerFilter(identity)) });
+  if (!ad || ad.status !== "submitted") redirect(`/ads/${id}`);
+
+  const now = new Date();
+  await db.transaction(async (tx) => {
+    const [latest] = await tx
+      .select({ id: versions.id })
+      .from(versions)
+      .where(and(eq(versions.submissionId, id), eq(versions.number, ad.currentVersion)));
+    if (ad.currentVersion === 1) {
+      // A first submission goes back to being a draft; its flags are recomputed when it's sent again.
+      await tx.delete(flags).where(eq(flags.versionId, latest.id));
+      await tx
+        .update(submissions)
+        .set({ status: "draft", riskScore: 0, submittedAt: null, firstSubmittedAt: null, updatedAt: now })
+        .where(eq(submissions.id, id));
+    } else {
+      // A resubmitted round goes back to "changes requested", with the reviewer's feedback open again.
+      await tx.delete(versions).where(eq(versions.id, latest.id));
+      const [previous] = await tx
+        .select({ id: versions.id })
+        .from(versions)
+        .where(and(eq(versions.submissionId, id), eq(versions.number, ad.currentVersion - 1)));
+      await tx.update(comments).set({ resolved: false }).where(eq(comments.versionId, previous.id));
+      await tx
+        .update(submissions)
+        .set({ status: "changes_requested", currentVersion: ad.currentVersion - 1, submittedAt: null, updatedAt: now })
+        .where(eq(submissions.id, id));
+    }
+    await tx.insert(auditEvents).values(event(identity, id, ad.currentVersion, "withdrawn"));
+  });
+  redirect(`/ads/${id}/edit`);
+}

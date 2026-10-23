@@ -26,6 +26,8 @@ export function describeEvent(event: Event): string {
       return `${who} approved${round}${event.detail ? `, with ${event.detail.replace(/^Approved with /i, "").replace(/ flags? judged/, (m) => m.replace("flag", "flagged phrase"))}` : ""}`;
     case "rejected":
       return `${who} rejected${round}`;
+    case "withdrawn":
+      return `${who} pulled it back to edit before review`;
     case "update_requested":
       return `${who} sent it back for an update after a rate change${event.detail ? ` (${event.detail.replace(/^Rates changed: /, "")})` : ""}`;
     case "rule_added":

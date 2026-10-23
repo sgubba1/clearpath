@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { withdrawForEdit } from "@/app/ads/actions";
 import { AdPreview } from "@/components/ad-preview";
 import { StatusBadge } from "@/components/badges";
 import { TimeAgo } from "@/components/time-ago";
@@ -72,6 +73,17 @@ export default async function AdPage({ params, searchParams }: PageProps<"/ads/[
           <Button asChild>
             <Link href={`/ads/${ad.id}/edit`}>Revise and resubmit</Link>
           </Button>
+        )}
+        {ad.status === "submitted" && (
+          <form action={withdrawForEdit.bind(null, ad.id)} className="flex flex-wrap items-center gap-3">
+            <Button type="submit" variant="outline">
+              Edit before review
+            </Button>
+            <span className="text-sm text-muted-foreground">You can make changes until a reviewer opens it.</span>
+          </form>
+        )}
+        {ad.status === "in_review" && (
+          <p className="text-sm text-muted-foreground">A reviewer is looking at it now, so it&apos;s locked. If something needs to change, they can send it back.</p>
         )}
       </header>
 
