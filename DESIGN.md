@@ -64,7 +64,7 @@ Reviewers read dense copy for hours, and marketers dip in between other work. Ne
 
 A flag only helps if the person reading it can act on it, so every flag is designed to answer three questions: what's wrong, why it matters, and how to fix it.
 
-- **Highlighted in place.** The flagged words are marked inside the ad itself, in the form and on the review screen, so nobody hunts for them. In the form, clicking a flag selects its words; on the review screen, clicking highlighted words jumps to the flag.
+- **Highlighted in place.** The flagged words are marked inside the ad itself, in the form and on the review screen, so nobody hunts for them. It works both ways: clicking a flag selects its words, and clicking highlighted words lights up their flag.
 - **Why it matters, in plain language.** Each flag explains the harm to the consumer ("people need the APR to compare offers"), with the rule and source one click away for reviewers. This is the direct answer to marketers not knowing why the rules exist.
 - **A fix that keeps the ad's voice.** Suggested changes swap only the problem words or add the missing condition, so applying one doesn't flatten the marketing copy. Undo is always there.
 - **A reason when sending with open issues.** Submitters can still send an ad with flags, but they say why, and the reviewer sees that reason next to the flags. It keeps the human in charge without letting warnings be ignored silently.
