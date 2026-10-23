@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SEVERITY_BADGE, Tag } from "@/components/badges";
-import { PageHeader } from "@/components/page-header";
+import { FilterSummary, ListFilters } from "@/components/list-filters";
+import { EmptyState, PageHeader } from "@/components/page-header";
 import { TimeAgo } from "@/components/time-ago";
 import { Button } from "@/components/ui/button";
 import { CHANNEL_LABELS, PRODUCT_LABELS } from "@/lib/labels";
 import { isTeamRule, RULE_CATEGORIES, RULES, type RuleMeta } from "@/lib/rules/catalog";
+import { matchesQuery, searchParam } from "@/lib/search";
 import { requireRole } from "@/lib/session";
 import { getTeamRules } from "@/lib/team-rules";
 import { cn } from "@/lib/utils";
@@ -16,11 +18,23 @@ export const metadata: Metadata = { title: "Ad rules" };
 export default async function RulesPage({ searchParams }: PageProps<"/rules">) {
   const identity = await requireRole(["marketer", "affiliate", "reviewer", "manager"]);
   const canEdit = identity.role === "reviewer" || identity.role === "manager";
-  const { added } = await searchParams;
+  const { added, q: rawQuery } = await searchParams;
+  const q = searchParam(rawQuery);
   const teamRules = await getTeamRules();
   const all: RuleMeta[] = [...RULES, ...teamRules];
-  const active = all.filter((rule) => !isTeamRule(rule) || rule.team.active);
-  const turnedOff = teamRules.filter((rule) => !rule.team.active);
+  // Search covers the rule's name, explanation, fix, source and (for team rules) its phrases.
+  const matches = (rule: RuleMeta) =>
+    matchesQuery(
+      q,
+      rule.title,
+      rule.whyItMatters,
+      rule.fixHint,
+      rule.regulation,
+      isTeamRule(rule) ? [...rule.team.phrases, rule.team.requiredText ?? ""].join(" ") : undefined,
+    );
+  const allActive = all.filter((rule) => !isTeamRule(rule) || rule.team.active);
+  const active = allActive.filter(matches);
+  const turnedOff = teamRules.filter((rule) => !rule.team.active).filter(matches);
 
   return (
     <main className="mx-auto w-full max-w-4xl space-y-8 px-4 py-8 sm:px-6">
@@ -31,7 +45,7 @@ export default async function RulesPage({ searchParams }: PageProps<"/rules">) {
       )}
       <PageHeader
         title="Ad rules"
-        description={`Every ad is checked against these ${active.length} rules as it's written. Each one explains why it exists and how to fix it. Illustrative, not legal advice.`}
+        description={`Every ad is checked against these ${allActive.length} rules as it's written. Each one explains why it exists and how to fix it. Illustrative, not legal advice.`}
         action={
           canEdit ? (
             <Button asChild>
@@ -40,6 +54,13 @@ export default async function RulesPage({ searchParams }: PageProps<"/rules">) {
           ) : undefined
         }
       />
+
+      <div className="space-y-2">
+        <ListFilters label="Search rules" placeholder="Search rules, e.g. APR, fees, partner" />
+        <FilterSummary shown={active.length} total={allActive.length} clearHref="/rules" />
+      </div>
+
+      {active.length === 0 && turnedOff.length === 0 && <EmptyState title="No rules match" description="Try a different word, such as APR, fees or approval." />}
 
       <nav aria-label="Rule categories" className="flex flex-wrap gap-2">
         {RULE_CATEGORIES.map((category) => {

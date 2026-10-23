@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { StatusBadge } from "@/components/badges";
+import { FilterSummary, ListFilters } from "@/components/list-filters";
 import { EmptyState, PageHeader } from "@/components/page-header";
 import { TimeAgo } from "@/components/time-ago";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { decisionExpectation } from "@/lib/format";
 import { CHANNEL_LABELS, PRODUCT_LABELS, submissionRef } from "@/lib/labels";
 import { getMyAds } from "@/lib/queries";
 import { REVIEW_TARGET_HOURS } from "@/lib/risk";
+import { matchesQuery, searchParam } from "@/lib/search";
 import { requireRole } from "@/lib/session";
 
 // Group by what the submitter should do next, not by raw status.
@@ -20,9 +22,11 @@ const GROUPS: { title: string; statuses: Status[] }[] = [
 
 export const metadata: Metadata = { title: "My ads" };
 
-export default async function MyAdsPage() {
+export default async function MyAdsPage({ searchParams }: PageProps<"/ads">) {
   const identity = await requireRole(["marketer", "affiliate"]);
-  const ads = await getMyAds(identity);
+  const allAds = await getMyAds(identity);
+  const q = searchParam((await searchParams).q);
+  const ads = allAds.filter((ad) => matchesQuery(q, ad.campaign, submissionRef(ad.id), CHANNEL_LABELS[ad.channel], PRODUCT_LABELS[ad.product]));
 
   return (
     <main className="mx-auto w-full max-w-4xl space-y-8 px-4 py-8 sm:px-6">
@@ -40,7 +44,16 @@ export default async function MyAdsPage() {
         }
       />
 
-      {ads.length === 0 ? (
+      {allAds.length > 0 && (
+        <div className="space-y-2">
+          <ListFilters label="Search your ads" placeholder="Search by ad name, CP number or channel" />
+          <FilterSummary shown={ads.length} total={allAds.length} clearHref="/ads" />
+        </div>
+      )}
+
+      {allAds.length > 0 && ads.length === 0 ? (
+        <EmptyState title="No ads match" description="Try a different search." />
+      ) : ads.length === 0 ? (
         <EmptyState
           title="No ads yet"
           description="Submit your first ad to get it reviewed. It shows up here with its status and any feedback from compliance."

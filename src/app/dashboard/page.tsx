@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Tag } from "@/components/badges";
+import { FilterSummary, ListFilters } from "@/components/list-filters";
 import { EmptyState, PageHeader } from "@/components/page-header";
 import { TimeAgo } from "@/components/time-ago";
 import { describeEvent } from "@/lib/activity";
@@ -10,6 +11,7 @@ import { REVIEW_TARGET_HOURS } from "@/lib/risk";
 import { getRule } from "@/lib/rules/catalog";
 import { requestRateUpdate } from "@/app/queue/actions";
 import { Button } from "@/components/ui/button";
+import { matchesQuery, searchParam } from "@/lib/search";
 import { requireRole } from "@/lib/session";
 import { getTeamRules } from "@/lib/team-rules";
 import { cn } from "@/lib/utils";
@@ -53,7 +55,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
         ))}
       </nav>
 
-      {tab === "overview" ? <Overview metrics={await getTeamMetrics()} /> : <AuditLog />}
+      {tab === "overview" ? <Overview metrics={await getTeamMetrics()} /> : <AuditLog q={searchParam(query.q)} />}
     </main>
   );
 }
@@ -221,32 +223,46 @@ function Metric({ label, value, note, tone, hint }: { label: string; value: stri
   );
 }
 
-async function AuditLog() {
-  const events = await getAuditLog();
-  if (events.length === 0) return <EmptyState title="Nothing logged yet" description="Every submission, check, comment and decision will appear here." />;
+async function AuditLog({ q }: { q?: string }) {
+  const allEvents = await getAuditLog();
+  if (allEvents.length === 0) return <EmptyState title="Nothing logged yet" description="Every submission, check, comment and decision will appear here." />;
+  // Search the sentence itself plus the ad it's about, e.g. "Dev", "approved", "CP-1031".
+  const events = allEvents.filter((event) =>
+    matchesQuery(q, describeEvent(event), event.campaign, event.submissionId ? submissionRef(event.submissionId) : undefined),
+  );
 
   return (
-    <section aria-label="Audit log" className="rounded-xl border bg-card">
-      <p className="border-b px-5 py-3 text-sm text-muted-foreground">
-        Every submission, pre-check, acknowledgment, comment and decision, newest first. Showing the latest {events.length}.
-      </p>
-      <ol className="divide-y">
-        {events.map((event) => (
-          <li key={event.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-5 py-3 text-sm">
-            <div className="min-w-0">
-              <p>{describeEvent(event)}</p>
-              {event.submissionId && (
-                <Link href={`/queue/${event.submissionId}`} className="text-xs text-muted-foreground underline-offset-2 hover:underline">
-                  {submissionRef(event.submissionId)} · {event.campaign}
-                </Link>
-              )}
-            </div>
-            <span className="shrink-0 text-xs text-muted-foreground">
-              <TimeAgo date={event.createdAt} />
-            </span>
-          </li>
-        ))}
-      </ol>
-    </section>
+    <div className="space-y-3">
+      <div className="space-y-2">
+        <ListFilters label="Search the audit log" placeholder="Search by person, action or ad" />
+        <FilterSummary shown={events.length} total={allEvents.length} clearHref="/dashboard?tab=audit" />
+      </div>
+      {events.length === 0 ? (
+        <EmptyState title="Nothing matches" description="Try a name, an action like approved, or a CP number." />
+      ) : (
+        <section aria-label="Audit log" className="rounded-xl border bg-card">
+          <p className="border-b px-5 py-3 text-sm text-muted-foreground">
+            Every submission, pre-check, acknowledgment, comment and decision, newest first, from the latest {allEvents.length} entries.
+          </p>
+          <ol className="divide-y">
+            {events.map((event) => (
+              <li key={event.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-5 py-3 text-sm">
+                <div className="min-w-0">
+                  <p>{describeEvent(event)}</p>
+                  {event.submissionId && (
+                    <Link href={`/queue/${event.submissionId}`} className="text-xs text-muted-foreground underline-offset-2 hover:underline">
+                      {submissionRef(event.submissionId)} · {event.campaign}
+                    </Link>
+                  )}
+                </div>
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  <TimeAgo date={event.createdAt} />
+                </span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+    </div>
   );
 }
