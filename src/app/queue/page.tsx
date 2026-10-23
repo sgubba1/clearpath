@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { RiskBadge, RiskReasons, StatusBadge, Tag } from "@/components/badges";
+import { FilterSummary, ListFilters } from "@/components/list-filters";
 import { EmptyState, PageHeader } from "@/components/page-header";
 import { daysUntil, formatDate, hoursSince, launchLabel, timeAgo, waitingFor } from "@/lib/format";
 import { CHANNEL_LABELS, PRODUCT_LABELS, submissionRef } from "@/lib/labels";
 import { getQueue, getRecentlyDecided, getSentBack, type DecidedSummary } from "@/lib/queries";
-import { REVIEW_TARGET_HOURS } from "@/lib/risk";
+import { REVIEW_TARGET_HOURS, riskLevel } from "@/lib/risk";
+import { matchesQuery, searchParam } from "@/lib/search";
 import { requireRole } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +20,31 @@ export default async function QueuePage({ searchParams }: PageProps<"/queue">) {
   // Counts for every tab are cheap at this volume and keep the tab labels honest.
   const [queue, sentBack, decided] = await Promise.all([getQueue(), getSentBack(identity.id), getRecentlyDecided(identity.id)]);
   const overdue = queue.filter((item) => item.submittedAt && hoursSince(item.submittedAt) > REVIEW_TARGET_HOURS).length;
+
+  // Search across all tabs (ad name, CP number, submitter or partner); risk chips on Waiting.
+  const q = searchParam(query.q);
+  const risk = query.risk === "high" || query.risk === "medium" || query.risk === "low" ? query.risk : undefined;
+  const matches = (item: DecidedSummary) =>
+    matchesQuery(q, item.campaign, submissionRef(item.id), item.submitterName, item.partnerName, CHANNEL_LABELS[item.channel], PRODUCT_LABELS[item.product]);
+  const searched = queue.filter(matches);
+  const waiting = searched.filter((item) => !risk || riskLevel(item.riskScore) === risk);
+  const riskChips = [
+    { value: "all", label: "All", count: searched.length },
+    ...(["high", "medium", "low"] as const).map((level) => ({
+      value: level,
+      label: level[0].toUpperCase() + level.slice(1),
+      count: searched.filter((item) => riskLevel(item.riskScore) === level).length,
+    })),
+  ];
+  const shownSentBack = sentBack.filter(matches);
+  const shownDecided = decided.filter(matches);
+  const tabHref = (id: string) => {
+    const next = new URLSearchParams();
+    if (id !== "waiting") next.set("tab", id);
+    if (q) next.set("q", q);
+    const qs = next.toString();
+    return qs ? `/queue?${qs}` : "/queue";
+  };
 
   return (
     <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 sm:px-6">
@@ -49,7 +76,7 @@ export default async function QueuePage({ searchParams }: PageProps<"/queue">) {
         ).map(([id, label, count]) => (
           <Link
             key={id}
-            href={id === "waiting" ? "/queue" : `/queue?tab=${id}`}
+            href={tabHref(id)}
             aria-current={tab === id ? "page" : undefined}
             className={cn(
               "-mb-px border-b-2 px-3 py-2 text-sm font-medium",
@@ -61,23 +88,39 @@ export default async function QueuePage({ searchParams }: PageProps<"/queue">) {
         ))}
       </nav>
 
+      <div className="space-y-2">
+        <ListFilters
+          key={tab}
+          label="Search ads"
+          placeholder="Search by ad, CP number, person or channel"
+          chips={tab === "waiting" ? riskChips : undefined}
+        />
+        <FilterSummary
+          shown={tab === "sent-back" ? shownSentBack.length : tab === "decided" ? shownDecided.length : waiting.length}
+          total={tab === "sent-back" ? sentBack.length : tab === "decided" ? decided.length : queue.length}
+          clearHref={tab === "waiting" ? "/queue" : `/queue?tab=${tab}`}
+        />
+      </div>
+
       {tab === "sent-back" ? (
         <HistoryList
-          items={sentBack}
+          items={shownSentBack}
           empty="Nothing sent back. Ads you request changes on show up here until they're resubmitted."
           status={(item) => `With ${item.partnerName ?? item.submitterName} · sent back ${timeAgo(item.updatedAt)}`}
         />
       ) : tab === "decided" ? (
         <HistoryList
-          items={decided}
+          items={shownDecided}
           empty="No decisions in the last 14 days."
           status={(item) => `${item.status === "approved" ? "Approved" : "Rejected"} · ${item.decidedAt ? timeAgo(item.decidedAt) : ""}`}
         />
       ) : queue.length === 0 ? (
         <EmptyState title="Nothing waiting for review" description="New submissions appear here as soon as they're sent." />
+      ) : waiting.length === 0 ? (
+        <EmptyState title="No ads match" description="Try a different search or risk level." />
       ) : (
         <ol className="divide-y rounded-xl border bg-card">
-          {queue.map((item) => {
+          {waiting.map((item) => {
             const waitedHours = item.submittedAt ? hoursSince(item.submittedAt) : 0;
             const isOverdue = waitedHours > REVIEW_TARGET_HOURS;
             const isRush = daysUntil(item.launchDate) <= 3;
