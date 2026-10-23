@@ -106,6 +106,15 @@ export function AdForm({ draftId, initial, channels, submitterLabel, minLaunchDa
     });
   }
 
+  // Clicking into flagged words lights up that flag in the panel, the reverse of clicking a flag.
+  function focusFlagAt(field: string, position: number) {
+    const index = findings.findIndex((finding) => finding.field === field && finding.end > finding.start && position >= finding.start && position <= finding.end);
+    if (index < 0) return;
+    const key = findingKey(findings[index], index);
+    setActiveKey(key);
+    document.getElementById(`flag-card-${key}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+
   function applyFinding(finding: Finding) {
     setUndoStack((stack) => [...stack, values.fields]);
     setValues((current) => ({ ...current, fields: applyFix(current.fields, finding) }));
@@ -324,6 +333,7 @@ export function AdForm({ draftId, initial, channels, submitterLabel, minLaunchDa
                   error={errors[`field.${field.key}`]}
                   marks={marksByField.get(field.key) ?? []}
                   activeMark={activeKey}
+                  onCaret={(position) => focusFlagAt(field.key, position)}
                   inputRef={(element) => {
                     if (element) inputs.current.set(field.key, element);
                     else inputs.current.delete(field.key);
@@ -579,6 +589,7 @@ function ChannelInput({
   activeMark,
   inputRef,
   onChange,
+  onCaret,
 }: {
   field: ChannelField;
   value: string;
@@ -587,6 +598,7 @@ function ChannelInput({
   activeMark?: string;
   inputRef: (element: HTMLTextAreaElement | null) => void;
   onChange: (value: string) => void;
+  onCaret: (position: number) => void;
 }) {
   const name = `field.${field.key}`;
   const label = field.required ? field.label : `${field.label} (optional)`;
@@ -613,6 +625,7 @@ function ChannelInput({
           marks={marks}
           activeMark={activeMark}
           singleLine={field.kind === "text"}
+          onCaret={onCaret}
           placeholder={field.placeholder}
           className={field.kind === "textarea" ? "min-h-28" : undefined}
         />

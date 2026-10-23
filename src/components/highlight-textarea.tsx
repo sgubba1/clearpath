@@ -21,12 +21,14 @@ type Props = Omit<ComponentProps<"textarea">, "value" | "onChange"> & {
   marks: Mark[];
   activeMark?: string;
   singleLine?: boolean;
+  // Called with the caret position when someone clicks or moves within the text.
+  onCaret?: (position: number) => void;
 };
 
 // A textarea with flagged text highlighted behind it. The text itself stays a normal,
 // editable textarea; a mirrored layer underneath draws the highlights.
 export const HighlightTextarea = forwardRef<HTMLTextAreaElement, Props>(function HighlightTextarea(
-  { value, onChange, marks, activeMark, singleLine, className, ...props },
+  { value, onChange, marks, activeMark, singleLine, onCaret, className, ...props },
   ref,
 ) {
   const backdrop = useRef<HTMLDivElement>(null);
@@ -50,6 +52,8 @@ export const HighlightTextarea = forwardRef<HTMLTextAreaElement, Props>(function
           if (singleLine && event.key === "Enter") event.preventDefault();
           props.onKeyDown?.(event);
         }}
+        onClick={(event) => onCaret?.(event.currentTarget.selectionStart)}
+        onKeyUp={(event) => onCaret?.(event.currentTarget.selectionStart)}
         onScroll={(event) => {
           if (backdrop.current) backdrop.current.scrollTop = event.currentTarget.scrollTop;
         }}

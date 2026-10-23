@@ -73,6 +73,7 @@ export function PrecheckPanel({ findings, hasCopy, fieldLabel, fieldValue, activ
                 return (
                   <FlagCard
                     key={key}
+                    id={`flag-card-${key}`}
                     finding={finding}
                     active={activeKey === key}
                     fieldLabel={fieldLabel(finding.field)}
@@ -95,6 +96,7 @@ export function PrecheckPanel({ findings, hasCopy, fieldLabel, fieldValue, activ
 }
 
 function FlagCard({
+  id,
   finding,
   active,
   fieldLabel,
@@ -102,6 +104,7 @@ function FlagCard({
   onSelect,
   onApply,
 }: {
+  id: string;
   finding: Finding;
   active: boolean;
   fieldLabel: string;
@@ -114,7 +117,7 @@ function FlagCard({
   const missing = finding.start === finding.end;
 
   return (
-    <li className={cn("rounded-lg border p-3 text-sm transition-colors", active && "border-foreground/40 bg-muted/40")}>
+    <li id={id} className={cn("scroll-mt-6 rounded-lg border p-3 text-sm transition-colors", active && "border-primary bg-primary/5 ring-1 ring-primary")}>
       <div className="flex items-start justify-between gap-2">
         <p className="font-medium">{rule.title}</p>
         <span className={cn("shrink-0 rounded px-1.5 py-0.5 text-xs font-semibold", SEVERITY_BADGE[finding.severity])}>
