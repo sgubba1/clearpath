@@ -102,7 +102,7 @@ export async function getOwnedAd(identity: Identity, id: number) {
       partner: true,
       versions: {
         orderBy: (v, { asc }) => [asc(v.number)],
-        with: { comments: { orderBy: (c, { asc }) => [asc(c.createdAt)], with: { flag: true } } },
+        with: { flags: true, comments: { orderBy: (c, { asc }) => [asc(c.createdAt)], with: { flag: true } } },
       },
     },
   });

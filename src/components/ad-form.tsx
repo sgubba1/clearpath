@@ -4,6 +4,7 @@ import { CheckCircle2Icon } from "lucide-react";
 import Link from "next/link";
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { saveAd, type AdFormState, type AdFormValues } from "@/app/ads/actions";
+import { AdPreview, type PreviewFlag } from "@/components/ad-preview";
 import { AiSecondOpinion } from "@/components/ai-second-opinion";
 import { HighlightTextarea, type Mark } from "@/components/highlight-textarea";
 import { findingKey, PrecheckPanel } from "@/components/precheck-panel";
@@ -51,6 +52,8 @@ export function AdForm({ draftId, initial, channels, submitterLabel, minLaunchDa
   const [confirming, setConfirming] = useState(false);
   const [reason, setReason] = useState("");
   const [changeNote, setChangeNote] = useState("");
+  // Edit / Preview toggle for the copy. The fields stay mounted while previewing so they still submit.
+  const [previewing, setPreviewing] = useState(false);
   const inputs = useRef(new Map<string, HTMLTextAreaElement>());
   const reasonRef = useRef<HTMLTextAreaElement>(null);
 
@@ -92,11 +95,15 @@ export function AdForm({ draftId, initial, channels, submitterLabel, minLaunchDa
 
   function selectFinding(finding: Finding, key: string) {
     setActiveKey(key);
-    const input = inputs.current.get(finding.field);
-    if (!input) return;
-    input.focus();
-    input.setSelectionRange(finding.start, finding.end);
-    input.scrollIntoView({ block: "center", behavior: "smooth" });
+    // Jumping to a flag means editing it, so leave the preview first and select once the fields show.
+    setPreviewing(false);
+    requestAnimationFrame(() => {
+      const input = inputs.current.get(finding.field);
+      if (!input) return;
+      input.focus();
+      input.setSelectionRange(finding.start, finding.end);
+      input.scrollIntoView({ block: "center", behavior: "smooth" });
+    });
   }
 
   function applyFinding(finding: Finding) {
@@ -129,6 +136,17 @@ export function AdForm({ draftId, initial, channels, submitterLabel, minLaunchDa
   }
 
   const fieldLabel = (key: string) => channelFields.find((field) => field.key === key)?.label ?? key;
+  // Fields with errors need fixing in the editor, so the preview steps aside until they're fixed.
+  const hasFieldErrors = Object.keys(errors).some((key) => key.startsWith("field."));
+  const showPreview = previewing && !hasFieldErrors;
+  const previewFlags: PreviewFlag[] = findings.map((finding, index) => ({
+    id: index,
+    field: finding.field,
+    start: finding.start,
+    end: finding.end,
+    severity: finding.severity,
+    ruleId: finding.ruleId,
+  }));
   const openIssues = findings.length;
 
   return (
@@ -257,22 +275,62 @@ export function AdForm({ draftId, initial, channels, submitterLabel, minLaunchDa
         )}
 
         {values.channel ? (
-          <Section title={channels.length > 1 ? `${CHANNEL_LABELS[values.channel]} copy` : "Your placement"}>
-            {CHANNEL_FIELDS[values.channel].map((field) => (
-              <ChannelInput
-                key={`${values.channel}-${field.key}`}
-                field={field}
-                value={values.fields[field.key] ?? ""}
-                onChange={(value) => setField(field.key, value)}
-                error={errors[`field.${field.key}`]}
-                marks={marksByField.get(field.key) ?? []}
-                activeMark={activeKey}
-                inputRef={(element) => {
-                  if (element) inputs.current.set(field.key, element);
-                  else inputs.current.delete(field.key);
-                }}
-              />
-            ))}
+          <Section
+            title={channels.length > 1 ? `${CHANNEL_LABELS[values.channel]} copy` : "Your placement"}
+            action={
+              <div role="group" aria-label="Show the copy as" className="inline-flex rounded-lg bg-muted p-0.5 text-sm">
+                {(
+                  [
+                    [false, "Edit"],
+                    [true, "Preview"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    aria-pressed={showPreview === value}
+                    disabled={value && hasFieldErrors}
+                    title={value && hasFieldErrors ? "Fix the fields marked in red first" : undefined}
+                    onClick={() => setPreviewing(value)}
+                    className={cn(
+                      "rounded-md px-3 py-1 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                      showPreview === value ? "bg-background text-foreground shadow-sm ring-1 ring-border" : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            }
+          >
+            {showPreview && (
+              <div className="space-y-2">
+                <AdPreview
+                  channel={values.channel}
+                  fields={values.fields}
+                  flags={previewFlags}
+                  onFlagClick={(id) => selectFinding(findings[id], findingKey(findings[id], id))}
+                />
+                <p className="text-xs text-muted-foreground">How it will look in its channel. Click a highlight to edit it.</p>
+              </div>
+            )}
+            <div className={showPreview ? "hidden" : "space-y-5"}>
+              {CHANNEL_FIELDS[values.channel].map((field) => (
+                <ChannelInput
+                  key={`${values.channel}-${field.key}`}
+                  field={field}
+                  value={values.fields[field.key] ?? ""}
+                  onChange={(value) => setField(field.key, value)}
+                  error={errors[`field.${field.key}`]}
+                  marks={marksByField.get(field.key) ?? []}
+                  activeMark={activeKey}
+                  inputRef={(element) => {
+                    if (element) inputs.current.set(field.key, element);
+                    else inputs.current.delete(field.key);
+                  }}
+                />
+              ))}
+            </div>
           </Section>
         ) : (
           <p className="rounded-xl border border-dashed px-6 py-8 text-center text-sm text-muted-foreground">
@@ -412,10 +470,13 @@ export function AdForm({ draftId, initial, channels, submitterLabel, minLaunchDa
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <section className="space-y-5 rounded-xl border bg-card p-5 sm:p-6">
-      <h2 className="font-semibold">{title}</h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="font-semibold">{title}</h2>
+        {action}
+      </div>
       {children}
     </section>
   );

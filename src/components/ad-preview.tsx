@@ -131,7 +131,8 @@ function Highlighted({
         id={`mark-${flag.id}`}
         onClick={() => onFlagClick?.(flag.id)}
         className={cn(
-          "cursor-pointer rounded-sm px-0.5 text-inherit [box-decoration-break:clone]",
+          "rounded-sm px-0.5 text-inherit [box-decoration-break:clone]",
+          onFlagClick && "cursor-pointer",
           MARK[flag.severity],
           activeFlagId === flag.id && "outline-2 outline-offset-1 outline-foreground/70",
         )}

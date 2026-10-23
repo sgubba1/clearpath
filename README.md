@@ -19,7 +19,7 @@ Reviewer time is the bottleneck, and most of it goes to repeat work: catching th
 
 One loop, where each step uses what the last one produced:
 
-1. **Pre-check while writing (marketers, partners).** Copy is checked as it's typed against the rule library and ClearPath's rate sheet. Flagged words are highlighted, each with a plain-English "why this matters" and a one-click fix that keeps the ad's wording.
+1. **Pre-check while writing (marketers, partners).** Copy is checked as it's typed against the rule library and ClearPath's rate sheet. Flagged words are highlighted, each with a plain-English "why this matters" and a one-click fix that keeps the ad's wording. A Preview toggle shows the ad the way it will look in its channel.
 2. **Risk-sorted review (reviewer).** The queue puts the riskiest ads first, with a plain-language "Why high risk?", search, and high/medium/low filters. Each ad shows in the shape of its channel (email, text, social post or partner page), with the same flags, the rate sheet, and, for partners, their track record.
 3. **Round 2 in seconds.** Sent-back ads are revised in the same form. The reviewer sees "1 of 1 flag fixed" and a word diff, not the whole ad again.
 4. **Team view (manager).** Turnaround, first-round approval rate, rounds per approval, the most common issues and where they come from, plus a full audit log.

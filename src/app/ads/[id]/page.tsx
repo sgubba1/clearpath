@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AdPreview } from "@/components/ad-preview";
 import { StatusBadge } from "@/components/badges";
 import { TimeAgo } from "@/components/time-ago";
 import { Button } from "@/components/ui/button";
 import type { Status } from "@/db/schema";
 import { decisionExpectation, formatDate, launchLabel } from "@/lib/format";
 import { getRule } from "@/lib/rules/catalog";
-import { CHANNEL_FIELDS, CHANNEL_LABELS, PRODUCT_LABELS, submissionRef } from "@/lib/labels";
+import { CHANNEL_LABELS, PRODUCT_LABELS, submissionRef } from "@/lib/labels";
 import { getOwnedAd } from "@/lib/queries";
 import { REVIEW_TARGET_HOURS } from "@/lib/risk";
 import { requireRole } from "@/lib/session";
@@ -35,7 +36,6 @@ export default async function AdPage({ params, searchParams }: PageProps<"/ads/[
   const query = await searchParams;
 
   const version = ad.versions[ad.versions.length - 1];
-  const fields = CHANNEL_FIELDS[ad.channel].filter((field) => version.fields[field.key]);
 
   return (
     <main className="mx-auto w-full max-w-3xl space-y-6 px-4 py-8 sm:px-6">
@@ -89,12 +89,14 @@ export default async function AdPage({ params, searchParams }: PageProps<"/ads/[
             {ad.status === "draft" ? "Saved" : "Sent"} <TimeAgo date={version.createdAt} />
           </span>
         </div>
-        {fields.map((field) => (
-          <div key={field.key} className="space-y-1">
-            <p className="text-sm font-medium text-muted-foreground">{field.label}</p>
-            <p className="whitespace-pre-wrap break-words">{version.fields[field.key]}</p>
-          </div>
-        ))}
+        {/* The same channel-shaped view the reviewer sees, with any flags marked. */}
+        <AdPreview
+          channel={ad.channel}
+          fields={version.fields}
+          flags={version.flags
+            .filter((flag) => flag.status !== "dismissed")
+            .map((flag) => ({ id: flag.id, field: flag.field, start: flag.start, end: flag.end, severity: flag.severity, ruleId: flag.ruleId }))}
+        />
       </section>
 
       {version.comments.length > 0 && (
