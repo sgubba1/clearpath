@@ -67,6 +67,7 @@ At about 125 ads a month, that's roughly **45 reviewer hours a month**. I'd meas
 - **Approval covers what partners submit, not what they publish.** Next: re-scan live partner pages.
 - **Rules are national, with one state example (the NMLS ID).** A national lender also needs state-by-state rules. Next: rules scoped to the states an ad runs in.
 - **Text only, no real login, one shared demo database.** Next: image text checks, SSO, notifications, more channels.
+- **Turning reviewer feedback into edits, depending on the team's comfort with AI.** Reviewer comments often contain the exact rewrite, so an optional AI step could read them and propose the edits in the revision form. The marketer reviews each change, can undo it, and still submits themselves. How far to take this (suggest only, or apply in one click) is a call for compliance to make based on its own needs and policy on AI.
 - **Rollout idea:** seed the rule library from the most common comments in the team's existing Excel log, and start with partners, the highest-risk channel.
 
 ## Run locally
