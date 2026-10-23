@@ -51,20 +51,23 @@ export function AiSecondOpinion({ enabled, input, fieldLabel, onApply, onSelect 
           <SparklesIcon aria-hidden className="size-4 text-violet-700" />
           AI second opinion
         </h3>
-        <Button type="button" size="sm" variant="outline" className="bg-background" onClick={run} disabled={pending || !input}>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="bg-background"
+          onClick={run}
+          disabled={pending || !input}
+          title="Looks for what rules can't: paraphrased promises, misleading overall impressions, fake urgency. Advisory only; it never clears a flag or approves anything."
+        >
           {pending ? "Reviewing…" : result && !stale ? "Ask again" : "Get a second opinion"}
         </Button>
       </div>
 
-      <div aria-live="polite" className="space-y-2 text-sm">
+      <div aria-live="polite" className="space-y-2 text-sm empty:hidden">
         {pending ? (
           <p className="text-muted-foreground">Reading the ad for anything the rules missed. This takes about ten seconds.</p>
-        ) : !result ? (
-          <p className="text-xs text-muted-foreground">
-            Looks for what rules can&apos;t: paraphrased promises, misleading overall impressions, fake urgency. Advisory only; it never clears a
-            flag or approves anything.
-          </p>
-        ) : result.status !== "ok" ? (
+        ) : !result ? null : result.status !== "ok" ? (
           <p className="text-muted-foreground">{result.message}</p>
         ) : (
           <>
@@ -127,6 +130,7 @@ export function AiSecondOpinion({ enabled, input, fieldLabel, onApply, onSelect 
               </ul>
             )}
             {result.overall && <p className="text-xs text-muted-foreground">{result.overall}</p>}
+            <p className="text-xs text-muted-foreground">Advisory only: it never clears a flag or approves anything.</p>
           </>
         )}
       </div>

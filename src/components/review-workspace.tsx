@@ -60,10 +60,9 @@ export function ReviewWorkspace({ submissionId, product, channel, fields, flags,
     target?.scrollIntoView({ block: "center", behavior: "smooth" });
   }
 
-  // Judgment calls sit beside the ad on desktop and after the flags on phones.
-  const renderChecklist = (placement: "side" | "inline") => (
-    <section aria-labelledby={`checklist-${placement}`} className="rounded-xl border bg-card p-5">
-      <h2 id={`checklist-${placement}`} className="font-semibold">
+  const checklist = (
+    <section aria-labelledby="checklist-title" className="rounded-xl border bg-card p-5">
+      <h2 id="checklist-title" className="font-semibold">
         Judgment calls
       </h2>
       <p className="mt-1 text-sm text-muted-foreground">The pre-check can&apos;t judge these. Worth a look on every ad.</p>
@@ -91,19 +90,19 @@ export function ReviewWorkspace({ submissionId, product, channel, fields, flags,
   );
 
   return (
-    <form action={formAction} className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start">
+    // Desktop: the ad, judgment calls and decision read top to bottom on the left, flags on the right.
+    // Phones: ad, flags, judgment calls, decision. One copy of each, so no field is submitted twice.
+    <form action={formAction} className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:grid-rows-[auto_auto_1fr] lg:items-start">
       <input type="hidden" name="id" value={submissionId} />
 
-      <div className="min-w-0 space-y-4">
+      <div className="min-w-0 space-y-4 lg:col-start-1 lg:row-start-1">
         <AdPreview channel={channel} fields={fields} flags={previewFlags} activeFlagId={activeFlagId} onFlagClick={(id) => focusFlag(id, "ad")} />
         <p className="rounded-lg bg-muted/60 px-4 py-2.5 text-sm">
           <span className="font-medium">Rate sheet:</span> {rateTerms}
         </p>
-        {/* Judgment calls matter before a decision, not after. */}
-        {canDecide && <div className="hidden lg:block">{renderChecklist("side")}</div>}
       </div>
 
-      <div className="space-y-4 lg:sticky lg:top-6">
+      <div className="space-y-4 lg:col-start-2 lg:row-span-3 lg:row-start-1">
         <section aria-labelledby="flags-title" className="rounded-xl border bg-card p-5">
           <h2 id="flags-title" className="font-semibold">
             {canDecide
@@ -150,9 +149,16 @@ export function ReviewWorkspace({ submissionId, product, channel, fields, flags,
                       )}
                     </button>
                     {flag.detail && <p className="mt-1 text-muted-foreground">{flag.detail}</p>}
-                    <a href={rule.sourceUrl} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
-                      {rule.regulation}
-                    </a>
+                    <details className="mt-1 text-xs text-muted-foreground">
+                      <summary className="cursor-pointer hover:text-foreground">Rule and source</summary>
+                      <p className="mt-1 text-foreground">{rule.whyItMatters}</p>
+                      {rule.sourceUrl && (
+                        <a href={rule.sourceUrl} target="_blank" rel="noreferrer" className="mt-1 inline-block underline-offset-2 hover:text-foreground hover:underline">
+                          {rule.regulation}
+                          <span className="sr-only"> (opens in a new tab)</span>
+                        </a>
+                      )}
+                    </details>
 
                     {flag.reason && !sharedReason && (
                       <blockquote className="mt-2 border-l-2 border-amber-400 bg-amber-50 py-1.5 pr-2 pl-2.5 text-amber-950">
@@ -216,10 +222,13 @@ export function ReviewWorkspace({ submissionId, product, channel, fields, flags,
             <AiSecondOpinion enabled={aiEnabled} input={{ product, channel, fields }} fieldLabel={fieldLabel} />
           </div>
         </section>
+      </div>
 
-        {canDecide && <div className="lg:hidden">{renderChecklist("inline")}</div>}
+      {/* Judgment calls matter before a decision, not after. */}
+      {canDecide && <div className="min-w-0 lg:col-start-1 lg:row-start-2">{checklist}</div>}
 
-        {canDecide && (
+      {canDecide && (
+        <div className="min-w-0 lg:col-start-1 lg:row-start-3">
           <section aria-labelledby="decision-title" className="space-y-4 rounded-xl border bg-card p-5">
             <div>
               <h2 id="decision-title" className="font-semibold">
@@ -292,8 +301,8 @@ export function ReviewWorkspace({ submissionId, product, channel, fields, flags,
             </div>
             {pending && <p className="text-sm text-muted-foreground">Saving…</p>}
           </section>
-        )}
-      </div>
+        </div>
+      )}
     </form>
   );
 }
