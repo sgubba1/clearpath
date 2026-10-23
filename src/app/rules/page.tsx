@@ -30,6 +30,7 @@ export default async function RulesPage({ searchParams }: PageProps<"/rules">) {
       rule.whyItMatters,
       rule.fixHint,
       rule.regulation,
+      RULE_CATEGORIES.find((category) => category.id === rule.category)?.label,
       isTeamRule(rule) ? [...rule.team.phrases, rule.team.requiredText ?? ""].join(" ") : undefined,
     );
   const allActive = all.filter((rule) => !isTeamRule(rule) || rule.team.active);
@@ -161,9 +162,19 @@ function RuleCard({ rule, canEdit }: { rule: RuleMeta; canEdit: boolean }) {
         </p>
         {team && canEdit && (
           <form action={setTeamRuleActive.bind(null, numericId, !team.active)}>
-            <Button type="submit" variant="ghost" size="sm" className="h-7 text-xs">
-              {team.active ? "Turn off" : "Turn back on"}
-            </Button>
+            {/* A switch reads faster than another text button on a word-heavy page. */}
+            <button
+              type="submit"
+              role="switch"
+              aria-checked={team.active}
+              aria-label={`${team.active ? "Turn off" : "Turn on"} ${rule.title}`}
+              className="flex items-center gap-2 text-xs text-muted-foreground"
+            >
+              <span className={cn("relative inline-flex h-5 w-9 items-center rounded-full transition-colors", team.active ? "bg-primary" : "bg-muted-foreground/30")}>
+                <span className={cn("inline-block size-4 rounded-full bg-white shadow transition-transform", team.active ? "translate-x-4.5" : "translate-x-0.5")} />
+              </span>
+              {team.active ? "On" : "Off"}
+            </button>
           </form>
         )}
       </div>
